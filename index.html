@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Fresher & Farewell Manager</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: #f4f6f9; color: #333; }
+        nav { background: #4f46e5; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: relative; }
+        nav .nav-brand { font-size: 18px; font-weight: bold; }
+        .menu-btn { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+        nav ul { list-style: none; display: flex; gap: 12px; margin: 0; padding: 0; }
+        nav ul li a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; }
+        nav ul li a:hover, nav ul li a.active { text-decoration: underline; }
+        
+        .sub-nav { background: #3730a3; display: flex; justify-content: center; gap: 20px; padding: 10px; flex-wrap: wrap; }
+        .sub-nav a { color: #e0e7ff; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .sub-nav a:hover { color: #fff; text-decoration: underline; }
+
+        @media (max-width: 768px) {
+            .menu-btn { display: block; }
+            nav ul { display: none; flex-direction: column; width: 100%; position: absolute; top: 100%; left: 0; background: #4338ca; padding: 15px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; gap: 12px; }
+            nav ul.active { display: flex; }
+        }
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+        .hero { background: linear-gradient(135deg, #4f46e5, #3b82f6); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+        .hero h1 { font-size: 24px; margin-bottom: 8px; }
+        .hero p { font-size: 14px; opacity: 0.9; }
+        .card-box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card-box h2 { color: #4f46e5; font-size: 16px; margin-bottom: 10px; border-bottom: 2px solid #eee; padding-bottom: 6px; }
+        .meeting-card { background: #f8fafc; border-left: 4px solid #4f46e5; padding: 12px; margin-bottom: 10px; border-radius: 4px; font-size: 13px; }
+        .meeting-card p { margin-bottom: 4px; color: #475569; }
+        .section-content { display: none; }
+        .section-content.active { display: block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; text-align: left; }
+        th, td { padding: 8px; border-bottom: 1px solid #eee; }
+        th { background: #f8fafc; color: #475569; }
+        .search-box { margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-brand">🎓 College Event Manager</div>
+        <button class="menu-btn" onclick="toggleMenu()">☰</button>
+        <ul id="navLinks">
+            <li><a href="index.html" class="active">Dashboard</a></li>
+            <li><a href="collection.html">Collection</a></li>
+            <li><a href="expenses.html">Expenses</a></li>
+            <li><a href="tasks.html">Tasks & Programs</a></li>
+            <li><a href="participants.html">Participants</a></li>
+            <li><a href="access.html">Access Control</a></li>
+        </ul>
+    </nav>
+
+    <div class="sub-nav">
+        <a onclick="showSection('workflow')">Work Flow</a>
+        <a onclick="showSection('contact')">Contact</a>
+        <a onclick="showSection('feedback')">Feedback</a>
+        <a onclick="showSection('about')">About</a>
+    </div>
+
+    <div class="container">
+        <div class="hero">
+            <h1>🏛️ Government Polytechnic / Engineering College</h1>
+            <p>Official Fresher & Farewell Event Management Portal</p>
+        </div>
+
+        <div id="section-home" class="section-content active">
+            <div class="card-box">
+                <h2>📌 Pre-Meeting Decisions & Updates</h2>
+                <div id="meetingsContainer">
+                    <p style="font-size: 13px; color: #64748b;">Loading meetings history...</p>
+                </div>
+            </div>
+            <div class="card-box">
+                <h2>📞 Quick Helpdesk</h2>
+                <p style="font-size: 14px; color: #64748b;">Agar aapko event, collection ya participation se judi koi bhi samasya hai, toh apne Branch CR ya Event Coordinator se sampark karein.</p>
+            </div>
+        </div>
+
+        <div id="section-workflow" class="section-content">
+            <div class="card-box">
+                <h2>⚙️ Event Management Work Flow</h2>
+                <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+                    1. <strong>Planning & Access:</strong> Admin panel ke zariye sabhi CR aur coordinators ko access diya jata hai.<br>
+                    2. <strong>Collection:</strong> Students aur Faculty se Cash ya UPI ke madhyam se collection entry hoti hai.<br>
+                    3. <strong>Expenses Tracking:</strong> Event ki kharidari aur kharche ka hisab yahan update hota hai.<br>
+                    4. <strong>Tasks & Programs:</strong> Stage performance aur decoration ki zimmedari task list me tay hoti hai.
+                </p>
+            </div>
+        </div>
+
+        <div id="section-contact" class="section-content">
+            <div class="card-box">
+                <h2>📞 Contact Coordinators</h2>
+                <p style="font-size: 14px; color: #475569;">Technical Support ya Event Query ke liye apne department ke head ya CR se judein.</p>
+            </div>
+        </div>
+
+        <div id="section-feedback" class="section-content">
+            <div class="card-box">
+                <h2>💬 Student Feedback Portal</h2>
+                <form id="feedbackForm" onsubmit="submitFeedback(event)" style="margin-bottom: 20px;">
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size:13px; font-weight:500; display:block; margin-bottom:4px;">Aapka Naam</label>
+                        <input type="text" id="fName" required placeholder="Pura naam" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size:13px; font-weight:500; display:block; margin-bottom:4px;">Aapka Message / Feedback</label>
+                        <textarea id="fMsg" required placeholder="Apna sujhav yahan likhein..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; height:80px;"></textarea>
+                    </div>
+                    <button type="submit" id="fbBtn" style="background:#4f46e5; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; width:100%; font-weight:600;">Submit Feedback</button>
+                </form>
+
+                <div id="adminFeedbackArea" style="display:none; border-top:2px solid #eee; padding-top:15px;">
+                    <h3 style="color:#10b981; font-size:15px; margin-bottom:10px;">🔒 Admin Panel: Received Feedbacks</h3>
+                    <div class="search-box">
+                        <input type="text" id="searchFeedbackInput" onkeyup="filterFeedbackTable()" placeholder="🔍 Naam se feedback search karein..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table>
+                            <thead><tr><th>Name</th><th>Message</th><th>Time</th></tr></thead>
+                            <tbody id="feedbackTableBody">
+                                <tr><td colspan="3" style="text-align:center;">Loading feedbacks...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-about" class="section-content">
+            <div class="card-box">
+                <h2>ℹ️ About Portal</h2>
+                <p style="font-size: 14px; color: #475569;">Yeh portal Government Polytechnic / Engineering College ke Fresher aur Farewell events ko transparent tarike se manage karne ke liye banaya gaya hai.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbxQYENvKcbaPb5sMfaUdnPek_ShnHbpd_QiTMTbdGiKdgOMV6IBvr4c7IjXnUximlFc/exec";
+        let globalFeedbackRows = [];
+
+        function toggleMenu() { document.getElementById("navLinks").classList.toggle("active"); }
+
+        function showSection(sectionId) {
+            let sections = document.querySelectorAll('.section-content');
+            sections.forEach(sec => sec.classList.remove('active'));
+            document.getElementById('section-' + sectionId).classList.add('active');
+
+            if(sectionId === 'feedback') {
+                let isAdmin = localStorage.getItem("isAdmin") === "true";
+                if(isAdmin) {
+                    document.getElementById("adminFeedbackArea").style.display = "block";
+                    fetchFeedbacks();
+                }
+            }
+        }
+
+        window.onload = function() {
+            let cached = localStorage.getItem("eventManagerData");
+            if(cached) { processMeetings(JSON.parse(cached)); }
+            fetchData();
+        }
+
+        function fetchData() {
+            fetch(API_URL + "?action=getData")
+            .then(res => res.json())
+            .then(data => {
+                localStorage.setItem("eventManagerData", JSON.stringify(data));
+                processMeetings(data);
+            }).catch(err => console.error(err));
+        }
+
+        // Date formatter to dd/mm/yy (without time)
+        function formatDate(dateStr) {
+            if (!dateStr) return "-";
+            let d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr; // Fallback if string format
+            let day = String(d.getDate()).padStart(2, '0');
+            let month = String(d.getMonth() + 1).padStart(2, '0');
+            let year = String(d.getFullYear()).slice(-2);
+            return `${day}/${month}/${year}`;
+        }
+
+        function processMeetings(data) {
+            let container = document.getElementById("meetingsContainer");
+            if(!data.Meetings || data.Meetings.length <= 1) {
+                container.innerHTML = `<p style="font-size: 13px; color: #64748b;">Abhi tak koi meeting record nahi ki gayi hai.</p>`;
+                return;
+            }
+
+            container.innerHTML = "";
+            // Loop through meetings (skipping header row index 0)
+            // Showing newest meetings first by looping backwards or keeping normal order
+            let rows = data.Meetings;
+            for(let i = rows.length - 1; i >= 1; i--) {
+                let r = rows[i];
+                if(!r[0] && !r[1]) continue;
+                
+                let mDate = formatDate(r[0]);      // Meeting Date
+                let decision = r[1] || "-";        // Decision
+                let nextDate = formatDate(r[2]);   // Next Meeting Date
+
+                let card = document.createElement("div");
+                card.className = "meeting-card";
+                card.innerHTML = `
+                    <p><strong>📅 Meeting Date:</strong> ${mDate}</p>
+                    <p><strong>💡 Nirnay (Decision):</strong> ${decision}</p>
+                    <p><strong>⏰ Agli Meeting ki Date:</strong> <span style="color: #10b981; font-weight: bold;">${nextDate}</span></p>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        function submitFeedback(e) {
+            e.preventDefault();
+            let btn = document.getElementById("fbBtn");
+            btn.innerText = "Submitting...";
+            btn.disabled = true;
+
+            let payload = {
+                action: "addFeedback",
+                name: document.getElementById("fName").value,
+                message: document.getElementById("fMsg").value
+            };
+
+            fetch(API_URL, {method: "POST", body: JSON.stringify(payload)})
+            .then(res => res.json())
+            .then(data => {
+                alert("Feedback Submitted Successfully!");
+                document.getElementById("feedbackForm").reset();
+                btn.innerText = "Submit Feedback";
+                btn.disabled = false;
+            }).catch(err => {
+                alert("Error submitting feedback!");
+                btn.innerText = "Submit Feedback";
+                btn.disabled = false;
+            });
+        }
+
+        function fetchFeedbacks() {
+            fetch(API_URL + "?action=getData")
+            .then(res => res.json())
+            .then(data => {
+                let rows = data.Feedback;
+                if(!rows) return;
+                globalFeedbackRows = rows;
+                displayFeedbackRows(rows);
+            }).catch(err => console.error(err));
+        }
+
+        function displayFeedbackRows(rows) {
+            let tbody = document.getElementById("feedbackTableBody");
+            tbody.innerHTML = "";
+            let hasRecord = false;
+            for(let i=1; i<rows.length; i++) {
+                let r = rows[i];
+                if(!r[0]) continue;
+                hasRecord = true;
+                tbody.innerHTML += `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2] || '-'}</td></tr>`;
+            }
+            if(!hasRecord) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">Koi feedback nahi mila.</td></tr>`;
+            }
+        }
+
+        function filterFeedbackTab() {
+            // filter logic
+        }
+    </script>
+</body>
+</html>

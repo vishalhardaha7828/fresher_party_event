@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Control - Event Manager</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: #f4f6f9; color: #333; }
+        nav { background: #4f46e5; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: relative; }
+        nav .nav-brand { font-size: 18px; font-weight: bold; }
+        .menu-btn { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+        nav ul { list-style: none; display: flex; gap: 12px; margin: 0; padding: 0; }
+        nav ul li a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; }
+        @media (max-width: 768px) {
+            .menu-btn { display: block; }
+            nav ul { display: none; flex-direction: column; width: 100%; position: absolute; top: 100%; left: 0; background: #4338ca; padding: 15px 20px; z-index: 1000; gap: 12px; }
+            nav ul.active { display: flex; }
+        }
+        .container { max-width: 450px; margin: 30px auto; padding: 0 15px; }
+        .box { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; margin-bottom: 20px; }
+        h2 { color: #4f46e5; font-size: 18px; margin-bottom: 12px; }
+        input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; margin-bottom: 15px; }
+        input[type="password"] { text-align: center; letter-spacing: 3px; }
+        button { background: #4f46e5; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; font-size: 14px; }
+        .btn-danger { background: #ef4444; margin-top: 10px; }
+        .status-badge { display: inline-block; padding: 5px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
+        .form-group { text-align: left; margin-bottom: 5px; font-size: 13px; font-weight: 600; color: #475569; }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-brand">🎓 College Event Manager</div>
+        <button class="menu-btn" onclick="toggleMenu()">☰</button>
+        <ul id="navLinks">
+            <li><a href="index.html">Dashboard</a></li>
+            <li><a href="collection.html">Collection</a></li>
+            <li><a href="expenses.html">Expenses</a></li>
+            <li><a href="tasks.html">Tasks & Programs</a></li>
+            <li><a href="participants.html">Participants</a></li>
+            <li><a href="access.html" style="font-weight:bold;">Access Control</a></li>
+        </ul>
+    </nav>
+    <div class="container">
+        <div class="box">
+            <h2>🔐 Admin & Role Access Control</h2>
+            <div id="roleBadge" class="status-badge" style="background:#f1f5f9; color:#475569;">Mode: Normal Viewer</div>
+            
+            <div id="loginSection">
+                <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Core Committee / Main Admin PIN darj karein.</p>
+                <input type="password" id="adminPin" placeholder="••••" maxlength="4">
+                <button onclick="loginAdmin()">Login as Admin</button>
+            </div>
+
+            <div id="logoutSection" style="display:none;">
+                <p style="font-size:13px; color:#166534; margin-bottom:15px;">Aap filhal <strong>Full Admin Access</strong> par hain.</p>
+                <button class="btn-danger" onclick="logoutAdmin()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Meeting Details Section -->
+        <div class="box" id="meetingSection" style="display:none;">
+            <h2>📝 Meeting Updates</h2>
+            
+            <div class="form-group">Meeting ki Date:</div>
+            <input type="date" id="meetingDate">
+
+            <div class="form-group">Meeting ka Nirnay (Decision):</div>
+            <textarea id="meetingDecision" rows="3" placeholder="Decision yahan likhein..."></textarea>
+            
+            <div class="form-group">Agli Meeting ki Date:</div>
+            <input type="date" id="nextMeetingDate">
+            
+            <button onclick="saveMeetingDetails()">Save Meeting Details</button>
+        </div>
+    </div>
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbxpekf4JVVSsSP506_vAmI_fN23ALJDWtKrTXM15-TYQTpW3-D7tfVf3hoZF-_-FuH4/exec";
+        
+        function toggleMenu() { document.getElementById("navLinks").classList.toggle("active"); }
+
+        window.onload = function() { 
+            updateUI(); 
+            document.getElementById("meetingDate").valueAsDate = new Date();
+        }
+
+        function loginAdmin() {
+            let pin = document.getElementById("adminPin").value;
+            if(pin === "1234") {
+                localStorage.setItem("isAdmin", "true");
+                alert("Login Successful!");
+                updateUI();
+            } else {
+                alert("Galat PIN!");
+            }
+        }
+
+        function logoutAdmin() {
+            localStorage.removeItem("isAdmin");
+            alert("Logged out successfully.");
+            updateUI();
+        }
+
+        function updateUI() {
+            let isAdmin = localStorage.getItem("isAdmin") === "true";
+            let badge = document.getElementById("roleBadge");
+            if(isAdmin) {
+                badge.style.background = "#dcfce7";
+                badge.style.color = "#166534";
+                badge.innerText = "Mode: Full Admin Access Active";
+                document.getElementById("loginSection").style.display = "none";
+                document.getElementById("logoutSection").style.display = "block";
+                document.getElementById("meetingSection").style.display = "block";
+            } else {
+                badge.style.background = "#f1f5f9";
+                badge.style.color = "#475569";
+                badge.innerText = "Mode: Normal Viewer (Read-Only)";
+                document.getElementById("loginSection").style.display = "block";
+                document.getElementById("logoutSection").style.display = "none";
+                document.getElementById("meetingSection").style.display = "none";
+            }
+        }
+
+        function saveMeetingDetails() {
+            let meetingDate = document.getElementById("meetingDate").value;
+            let decision = document.getElementById("meetingDecision").value;
+            let nextDate = document.getElementById("nextMeetingDate").value;
+
+            if(!meetingDate || !decision || !nextDate) {
+                alert("Kripya sabhi fields bharein!");
+                return;
+            }
+
+            let meetingData = {
+                action: "addMeeting",
+                meetingDate: meetingDate,
+                decision: decision,
+                nextDate: nextDate
+            };
+
+            let btn = document.querySelector("#meetingSection button");
+            btn.innerText = "Saving to Columns...";
+            btn.disabled = true;
+
+            fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify(meetingData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert("Data Google Sheet ke alag-alag columns me save ho gaya hai!");
+                document.getElementById("meetingDecision").value = "";
+                btn.innerText = "Save Meeting Details";
+                btn.disabled = false;
+                localStorage.removeItem("eventManagerData");
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error saving data!");
+                btn.innerText = "Save Meeting Details";
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>

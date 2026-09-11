@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks & Programs - Event Manager</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: #f4f6f9; color: #333; }
+        nav { background: #4f46e5; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: relative; }
+        nav .nav-brand { font-size: 18px; font-weight: bold; }
+        .menu-btn { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+        nav ul { list-style: none; display: flex; gap: 12px; margin: 0; padding: 0; }
+        nav ul li a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; }
+        @media (max-width: 768px) {
+            .menu-btn { display: block; }
+            nav ul { display: none; flex-direction: column; width: 100%; position: absolute; top: 100%; left: 0; background: #4338ca; padding: 15px 20px; z-index: 1000; gap: 12px; }
+            nav ul.active { display: flex; }
+        }
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+        .box { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        h2 { color: #4f46e5; font-size: 16px; margin-bottom: 12px; }
+        .form-group { margin-bottom: 10px; }
+        label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+        button { background: #4f46e5; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; }
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; text-align: left; white-space: nowrap; }
+        th, td { padding: 10px 8px; border-bottom: 1px solid #eee; }
+        th { background: #f8fafc; color: #475569; font-weight: 600; }
+        .search-box { margin-bottom: 15px; }
+        .badge-completed { background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+        .badge-pending { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+        .complete-btn { background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-brand">🎓 Event Manager</div>
+        <button class="menu-btn" onclick="toggleMenu()">☰</button>
+        <ul id="navLinks">
+            <li><a href="index.html">Dashboard</a></li>
+            <li><a href="collection.html">Collection</a></li>
+            <li><a href="expenses.html">Expenses</a></li>
+            <li><a href="tasks.html" style="font-weight:bold;">Tasks & Programs</a></li>
+            <li><a href="participants.html">Participants</a></li>
+            <li><a href="access.html">Access Control</a></li>
+        </ul>
+    </nav>
+    <div class="container">
+        <!-- Add Task Box (Admin Only) -->
+        <div class="box" id="adminTaskBox" style="display: none;">
+            <h2>📌 Add Task / Program (Admin Only)</h2>
+            <form id="taskForm" onsubmit="submitTask(event)">
+                <div class="form-group">
+                    <label>Task / Program Title</label>
+                    <input type="text" id="tTitle" required placeholder="Jaise: Dance Performance">
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="tType">
+                        <option value="Performance">Performance</option>
+                        <option value="Task">Task / Duty</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="tStatus">
+                        <option value="Pending">Pending</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Time Slot</label>
+                    <input type="text" id="tTime" placeholder="Jaise: 11:00 AM">
+                </div>
+                <button type="submit" id="saveTaskBtn">Save Task</button>
+            </form>
+        </div>
+
+        <!-- Task List Box -->
+        <div class="box">
+            <h2>📋 Tasks & Programs List</h2>
+            <div class="search-box">
+                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="🔍 Title ya Type se search karein...">
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                            <th id="actionHeader" style="display:none;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="taskTableBody">
+                        <tr><td colspan="5" style="text-align:center;">Loading data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbzQ4UcOSuIS6V1oeYrsE3FcB5lCEB-oLgO8SbO0mzRAC88hUF8_vhu3VnkV-wRN6feg/exec";
+        let globalTaskRows = [];
+        let isAdmin = false;
+
+        function toggleMenu() { document.getElementById("navLinks").classList.toggle("active"); }
+
+        window.onload = function() {
+            isAdmin = localStorage.getItem("isAdmin") === "true";
+            if(isAdmin) { 
+                document.getElementById("adminTaskBox").style.display = "block"; 
+                document.getElementById("actionHeader").style.display = "table-cell";
+            }
+            
+            let cached = localStorage.getItem("eventManagerData");
+            if(cached) { renderTasks(JSON.parse(cached)); }
+            fetchData();
+        }
+
+        function fetchData() {
+            fetch(API_URL + "?action=getData")
+            .then(res => res.json())
+            .then(data => {
+                localStorage.setItem("eventManagerData", JSON.stringify(data));
+                renderTasks(data);
+            }).catch(err => console.error(err));
+        }
+
+        function renderTasks(data) {
+            let rows = data.Tasks;
+            if(!rows) return;
+            globalTaskRows = rows;
+            displayTableRows(rows);
+        }
+
+        function displayTableRows(rows) {
+            let tbody = document.getElementById("taskTableBody");
+            tbody.innerHTML = "";
+            let hasRecord = false;
+            
+            for(let i=1; i<rows.length; i++) {
+                let r = rows[i];
+                if(!r[0]) continue;
+                hasRecord = true;
+                
+                let title = r[0] || '-';
+                let type = r[1] || '-';
+                let rawStatus = r[2] || 'Pending';
+                let statusBadge = rawStatus === 'Completed' ? `<span class="badge-completed">Completed</span>` : `<span class="badge-pending">Pending</span>`;
+                let time = r[3] || '-';
+                
+                let actionCol = '';
+                if(isAdmin) {
+                    if(rawStatus === 'Pending') {
+                        actionCol = `<td><button class="complete-btn" onclick="markCompleted('${title}')">Mark Completed</button></td>`;
+                    } else {
+                        actionCol = `<td>-</td>`;
+                    }
+                }
+
+                tbody.innerHTML += `<tr>
+                    <td><b>${title}</b></td>
+                    <td>${type}</td>
+                    <td>${statusBadge}</td>
+                    <td>${time}</td>
+                    ${isAdmin ? actionCol : ''}
+                </tr>`;
+            }
+            if(!hasRecord) {
+                let colSpanCount = isAdmin ? 5 : 4;
+                tbody.innerHTML = `<tr><td colspan="${colSpanCount}" style="text-align:center; color:#64748b; padding: 15px;">Koi task nahi mila.</td></tr>`;
+            }
+        }
+
+        function markCompleted(title) {
+            if(!confirm(`Kya aap "${title}" ko completed mark karna chahte hain?`)) return;
+
+            let payload = {
+                action: "updateTaskStatus",
+                title: title
+            };
+
+            fetch(API_URL, {method: "POST", body: JSON.stringify(payload)})
+            .then(res => res.json())
+            .then(data => {
+                alert("Task status updated successfully!");
+                localStorage.removeItem("eventManagerData");
+                fetchData();
+            }).catch(err => {
+                alert("Error updating status!");
+            });
+        }
+
+        function filterTable() {
+            let input = document.getElementById("searchInput").value.toLowerCase();
+            if(!globalTaskRows.length) return;
+            let filteredRows = [globalTaskRows[0]];
+            for(let i=1; i<globalTaskRows.length; i++) {
+                let r = globalTaskRows[i];
+                if(!r[0]) continue;
+                if(r[0].toLowerCase().includes(input) || r[1].toLowerCase().includes(input)) {
+                    filteredRows.push(r);
+                }
+            }
+            displayTableRows(filteredRows);
+        }
+
+        function submitTask(e) {
+            e.preventDefault();
+            let btn = document.getElementById("saveTaskBtn");
+            btn.innerText = "Saving...";
+            btn.disabled = true;
+
+            let payload = {
+                action: "addTask",
+                title: document.getElementById("tTitle").value,
+                type: document.getElementById("tType").value,
+                status: document.getElementById("tStatus").value,
+                time: document.getElementById("tTime").value
+            };
+            fetch(API_URL, {method: "POST", body: JSON.stringify(payload)})
+            .then(res => res.json())
+            .then(data => {
+                alert("Saved Successfully!");
+                document.getElementById("taskForm").reset();
+                btn.innerText = "Save Task";
+                btn.disabled = false;
+                localStorage.removeItem("eventManagerData");
+                fetchData();
+            }).catch(err => {
+                alert("Error saving!");
+                btn.innerText = "Save Task";
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>

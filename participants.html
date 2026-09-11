@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Participants - Event Manager</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: #f4f6f9; color: #333; }
+        nav { background: #4f46e5; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: relative; }
+        nav .nav-brand { font-size: 18px; font-weight: bold; }
+        .menu-btn { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+        nav ul { list-style: none; display: flex; gap: 12px; margin: 0; padding: 0; }
+        nav ul li a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; }
+        @media (max-width: 768px) {
+            .menu-btn { display: block; }
+            nav ul { display: none; flex-direction: column; width: 100%; position: absolute; top: 100%; left: 0; background: #4338ca; padding: 15px 20px; z-index: 1000; gap: 12px; }
+            nav ul.active { display: flex; }
+        }
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+        .box { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        h2 { color: #4f46e5; font-size: 16px; margin-bottom: 12px; }
+        .form-group { margin-bottom: 10px; }
+        label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; }
+        input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; outline: none; background: #fff; }
+        textarea { resize: vertical; }
+        button { background: #4f46e5; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; margin-top: 5px; }
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; text-align: left; }
+        th, td { padding: 8px; border-bottom: 1px solid #eee; }
+        th { background: #f8fafc; color: #475569; }
+        .search-box { margin-bottom: 15px; }
+        .badge-solo { background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .badge-group { background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-brand">🎓 Event Manager</div>
+        <button class="menu-btn" onclick="toggleMenu()">☰</button>
+        <ul id="navLinks">
+            <li><a href="index.html">Dashboard</a></li>
+            <li><a href="collection.html">Collection</a></li>
+            <li><a href="expenses.html">Expenses</a></li>
+            <li><a href="tasks.html">Tasks & Programs</a></li>
+            <li><a href="participants.html" style="font-weight:bold;">Participants</a></li>
+            <li><a href="access.html">Access Control</a></li>
+        </ul>
+    </nav>
+    <div class="container">
+        <div class="box">
+            <h2>🏆 Register Participant</h2>
+            <form id="participantForm" onsubmit="submitParticipant(event)">
+                <div class="form-group">
+                    <label>Participation Type</label>
+                    <select id="pType" onchange="handleTypeChange()" required>
+                        <option value="Solo">Solo</option>
+                        <option value="Group">Group</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label id="nameLabel">Participant Name</label>
+                    <input type="text" id="pName" required placeholder="Pura naam">
+                </div>
+                
+                <!-- Group Members Textarea Box -->
+                <div class="form-group" id="groupMembersGroup" style="display: none;">
+                    <label>Group Members Names (Comma lagakar likhein)</label>
+                    <textarea id="pGroupMembers" rows="3" placeholder="Jaise: Rahul, Amit, Rohit"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Branch / Department</label>
+                    <select id="pBranch" required>
+                        <option value="">Branch Select Karein</option>
+                        <option value="Civil">Civil</option>
+                        <option value="CS">CS</option>
+                        <option value="ME">ME</option>
+                        <option value="EE">EE</option>
+                        <option value="EC">EC</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Semester</label>
+                    <select id="pSemester" required>
+                        <option value="">Semester Select Karein</option>
+                        <option value="1st">1st Semester</option>
+                        <option value="3rd">3rd Semester</option>
+                        <option value="5th">5th Semester</option>
+                        <option value="7th">7th Semester</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Event Name</label>
+                    <select id="pEvent" required>
+                        <option value="">Event Select Karein</option>
+                        <option value="Singing">Singing</option>
+                        <option value="Dance">Dance</option>
+                        <option value="Drama">Drama / Skit</option>
+                        <option value="Quiz">Quiz Competition</option>
+                        <option value="Poetry">Poetry</option>
+                        <option value="Coding">Coding Contest</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number (10 Digits)</label>
+                    <input type="text" id="pPhone" maxlength="10" pattern="[0-9]{10}" required placeholder="10 digit mobile number" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+                <button type="submit" id="savePartBtn">Register Participant</button>
+            </form>
+        </div>
+
+        <div class="box" id="adminParticipantListSection" style="display: none;">
+            <h2>📋 Participants List (Admin Secured View)</h2>
+            <div class="search-box">
+                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="🔍 Naam, Type ya Event se search karein...">
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name / Group Members</th>
+                            <th>Type</th>
+                            <th>Branch</th>
+                            <th>Semester</th>
+                            <th>Event</th>
+                            <th>Phone</th>
+                        </tr>
+                    </thead>
+                    <tbody id="participantTableBody">
+                        <tr><td colspan="6" style="text-align:center;">Loading data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbxpekf4JVVSsSP506_vAmI_fN23ALJDWtKrTXM15-TYQTpW3-D7tfVf3hoZF-_-FuH4/exec";
+        let globalParticipantRows = [];
+
+        function toggleMenu() { document.getElementById("navLinks").classList.toggle("active"); }
+
+        window.onload = function() {
+            let isAdmin = localStorage.getItem("isAdmin") === "true";
+            if(isAdmin) {
+                document.getElementById("adminParticipantListSection").style.display = "block";
+                let cached = localStorage.getItem("eventManagerData");
+                if(cached) { renderParticipants(JSON.parse(cached)); }
+                fetchData();
+            }
+        }
+
+        function handleTypeChange() {
+            let type = document.getElementById("pType").value;
+            let nameLabel = document.getElementById("nameLabel");
+            let groupMembersGroup = document.getElementById("groupMembersGroup");
+            if(type === "Group") {
+                nameLabel.innerText = "Group Leader Name";
+                groupMembersGroup.style.display = "block";
+                document.getElementById("pGroupMembers").required = true;
+            } else {
+                nameLabel.innerText = "Participant Name";
+                groupMembersGroup.style.display = "none";
+                document.getElementById("pGroupMembers").required = false;
+            }
+        }
+
+        function fetchData() {
+            fetch(API_URL + "?action=getData")
+            .then(res => res.json())
+            .then(data => {
+                localStorage.setItem("eventManagerData", JSON.stringify(data));
+                renderParticipants(data);
+            }).catch(err => console.error(err));
+        }
+
+        function renderParticipants(data) {
+            let rows = data.Participants;
+            if(!rows) return;
+            globalParticipantRows = rows;
+            displayTableRows(rows);
+        }
+
+        function displayTableRows(rows) {
+            let tbody = document.getElementById("participantTableBody");
+            if(!tbody) return;
+            tbody.innerHTML = "";
+            let hasRecord = false;
+            for(let i=1; i<rows.length; i++) {
+                let r = rows[i];
+                if(!r[0]) continue;
+                hasRecord = true;
+                
+                let name = r[0] || '-';
+                let branch = r[1] || '-';
+                let semester = r[2] || '-';
+                let event = r[3] || '-';
+                let phone = r[4] || '-';
+                let type = r[5] || 'Solo';
+                let groupMembers = r[6] || '';
+
+                let typeBadge = type === 'Group' ? `<span class="badge-group">Group</span>` : `<span class="badge-solo">Solo</span>`;
+                let displayName = `<b>${name}</b>`;
+                if(type === 'Group' && groupMembers) {
+                    displayName += `<br><small style="color:#64748b;">Members: ${groupMembers}</small>`;
+                }
+
+                tbody.innerHTML += `<tr>
+                    <td>${displayName}</td>
+                    <td>${typeBadge}</td>
+                    <td>${branch}</td>
+                    <td>${semester}</td>
+                    <td>${event}</td>
+                    <td>${phone || '-'}</td>
+                </tr>`;
+            }
+            if(!hasRecord) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b;">Koi participant nahi mila.</td></tr>`;
+            }
+        }
+
+        function filterTable() {
+            let input = document.getElementById("searchInput").value.toLowerCase();
+            if(!globalParticipantRows.length) return;
+            let filteredRows = [globalParticipantRows[0]];
+            for(let i=1; i<globalParticipantRows.length; i++) {
+                let r = globalParticipantRows[i];
+                if(!r[0]) continue;
+                let name = (r[0] || "").toLowerCase();
+                let event = (r[3] || "").toLowerCase();
+                let type = (r[5] || "").toLowerCase();
+                let members = (r[6] || "").toLowerCase();
+                if(name.includes(input) || event.includes(input) || type.includes(input) || members.includes(input)) {
+                    filteredRows.push(r);
+                }
+            }
+            displayTableRows(filteredRows);
+        }
+
+        function submitParticipant(e) {
+            e.preventDefault();
+            let phone = document.getElementById("pPhone").value;
+            if(phone.length !== 10) {
+                alert("Mobile number exact 10 digits ka hona chahiye!");
+                return;
+            }
+
+            let btn = document.getElementById("savePartBtn");
+            btn.innerText = "Registering...";
+            btn.disabled = true;
+
+            let type = document.getElementById("pType").value;
+            let payload = {
+                action: "addParticipant",
+                name: document.getElementById("pName").value,
+                branch: document.getElementById("pBranch").value,
+                semester: document.getElementById("pSemester").value,
+                event: document.getElementById("pEvent").value,
+                phone: phone,
+                type: type,
+                groupMembers: type === "Group" ? document.getElementById("pGroupMembers").value : ""
+            };
+
+            fetch(API_URL, {method: "POST", body: JSON.stringify(payload)})
+            .then(res => res.json())
+            .then(data => {
+                alert("Registered Successfully!");
+                document.getElementById("participantForm").reset();
+                handleTypeChange();
+                btn.innerText = "Register Participant";
+                btn.disabled = false;
+                localStorage.removeItem("eventManagerData");
+                let isAdmin = localStorage.getItem("isAdmin") === "true";
+                if(isAdmin) { fetchData(); }
+            }).catch(err => {
+                alert("Error registering!");
+                btn.innerText = "Register Participant";
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>

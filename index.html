@@ -24,9 +24,23 @@
             nav ul.active { display: flex; }
         }
         .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
-        .hero { background: linear-gradient(135deg, #4f46e5, #3b82f6); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
-        .hero h1 { font-size: 24px; margin-bottom: 8px; }
-        .hero p { font-size: 14px; opacity: 0.9; }
+        
+        /* Hero Section Fixed Size and Fit */
+        .hero { position: relative; width: 100%; height: 320px; overflow: hidden; color: white; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; text-align: center; background: #1e293b; }
+        
+        .hero .slide-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: 0; transition: opacity 1s ease-in-out; }
+        .hero .slide-img.active { opacity: 1; }
+
+        .hero::after { content: ""; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 1; }
+        .hero-content { position: relative; z-index: 2; max-width: 720px; padding: 20px; }
+        .hero h1 { font-size: 24px; line-height: 1.25; margin-bottom: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .hero p { font-size: 14px; opacity: 0.95; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        
+        @media (max-width: 600px) {
+            .hero { height: 250px; }
+            .hero h1 { font-size: 20px; }
+        }
+
         .card-box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .card-box h2 { color: #4f46e5; font-size: 16px; margin-bottom: 10px; border-bottom: 2px solid #eee; padding-bottom: 6px; }
         .meeting-card { background: #f8fafc; border-left: 4px solid #4f46e5; padding: 12px; margin-bottom: 10px; border-radius: 4px; font-size: 13px; }
@@ -61,9 +75,17 @@
     </div>
 
     <div class="container">
-        <div class="hero">
-            <h1>🏛️ Government Polytechnic / Engineering College</h1>
-            <p>Official Fresher & Farewell Event Management Portal</p>
+        <!-- Hero Section with Slideshow -->
+        <div class="hero" id="heroSlider">
+            <img src="https://lh3.googleusercontent.com/d/1UkrRmhdYgpMDfv7TDc6ROheenpazD93B" class="slide-img active" alt="College Photo 1">
+            <img src="https://lh3.googleusercontent.com/d/129e48WuY7T4SAKgCq21PhORXHaVu3ipc" class="slide-img" alt="College Photo 2">
+            <img src="https://lh3.googleusercontent.com/d/1tJMVOjmkizCiOAqbsbVHELzhu4MC7jj6" class="slide-img" alt="College Photo 3">
+            <img src="https://lh3.googleusercontent.com/d/1u5UXrDe22D3TxPraVQlfvzjZZ1V43q6g" class="slide-img" alt="College Photo 4">
+            
+            <div class="hero-content">
+                <h1>🏛️ Government Polytechnic College Dindori</h1>
+                <p>Official Fresher & Farewell Event Management Portal</p>
+            </div>
         </div>
 
         <div id="section-home" class="section-content active">
@@ -159,9 +181,23 @@
         }
 
         window.onload = function() {
+            initHeroSlideshow();
             let cached = localStorage.getItem("eventManagerData");
             if(cached) { processMeetings(JSON.parse(cached)); }
             fetchData();
+        }
+
+        // Slideshow Rotation Script
+        function initHeroSlideshow() {
+            const slides = document.querySelectorAll("#heroSlider .slide-img");
+            if(slides.length > 1) {
+                let currentSlide = 0;
+                setInterval(() => {
+                    slides[currentSlide].classList.remove("active");
+                    currentSlide = (currentSlide + 1) % slides.length;
+                    slides[currentSlide].classList.add("active");
+                }, 4000);
+            }
         }
 
         function fetchData() {
@@ -173,11 +209,10 @@
             }).catch(err => console.error(err));
         }
 
-        // Date formatter to dd/mm/yy (without time)
         function formatDate(dateStr) {
             if (!dateStr) return "-";
             let d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr; // Fallback if string format
+            if (isNaN(d.getTime())) return dateStr;
             let day = String(d.getDate()).padStart(2, '0');
             let month = String(d.getMonth() + 1).padStart(2, '0');
             let year = String(d.getFullYear()).slice(-2);
@@ -192,16 +227,14 @@
             }
 
             container.innerHTML = "";
-            // Loop through meetings (skipping header row index 0)
-            // Showing newest meetings first by looping backwards or keeping normal order
             let rows = data.Meetings;
             for(let i = rows.length - 1; i >= 1; i--) {
                 let r = rows[i];
                 if(!r[0] && !r[1]) continue;
                 
-                let mDate = formatDate(r[0]);      // Meeting Date
-                let decision = r[1] || "-";        // Decision
-                let nextDate = formatDate(r[2]);   // Next Meeting Date
+                let mDate = formatDate(r[0]);
+                let decision = r[1] || "-";
+                let nextDate = formatDate(r[2]);
 
                 let card = document.createElement("div");
                 card.className = "meeting-card";
@@ -249,25 +282,6 @@
                 globalFeedbackRows = rows;
                 displayFeedbackRows(rows);
             }).catch(err => console.error(err));
-        }
-
-        function displayFeedbackRows(rows) {
-            let tbody = document.getElementById("feedbackTableBody");
-            tbody.innerHTML = "";
-            let hasRecord = false;
-            for(let i=1; i<rows.length; i++) {
-                let r = rows[i];
-                if(!r[0]) continue;
-                hasRecord = true;
-                tbody.innerHTML += `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2] || '-'}</td></tr>`;
-            }
-            if(!hasRecord) {
-                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">Koi feedback nahi mila.</td></tr>`;
-            }
-        }
-
-        function filterFeedbackTab() {
-            // filter logic
         }
     </script>
 </body>

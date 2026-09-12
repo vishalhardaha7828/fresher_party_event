@@ -65,7 +65,7 @@
                     <div><label for="amount">Amount (₹)</label><input id="amount" type="number" min="1" required></div>
                     <div><label for="mode">Payment Mode</label><select id="mode"><option>Cash</option><option>UPI</option></select></div>
                 </div>
-                <div class="qr" id="qrBox"><img src="https://lh3.googleusercontent.com/d/1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc" alt="UPI QR Code"><p>UPI payment ke liye QR scan karein.</p></div>
+                <div class="qr" id="qrBox"><img id="qrImage" src="https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&amp;sz=w1000" alt="UPI QR Code"><p id="qrMessage">UPI payment ke liye QR scan karein.</p></div>
                 <button id="saveButton" type="submit">Save Collection</button>
                 <button id="cancelEdit" type="button">Cancel Edit</button>
             </form>
@@ -85,7 +85,7 @@
     </main>
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbwwx9910cJHe03jNhXUSMXptGy4IltCkDzx8yGlABVogYgPZ2TmBFNuY8WuK3FSeWFY/exec";
-const QR_URL = "https://lh3.googleusercontent.com/d/1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc";
+const QR_URL = "https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&sz=w1000";
 let rows = [];
 let editingIndex = null;
 const $ = id => document.getElementById(id);
@@ -99,9 +99,11 @@ window.addEventListener("load", () => {
     $("roleText").innerText = admin ? "Admin: full collection access" : volunteer ? `Volunteer: ${localStorage.getItem("volunteerBranch")} - ${localStorage.getItem("volunteerSemester")}` : "Read-only mode";
     $("actionsHeader").style.display = admin ? "table-cell" : "none";
     if (admin || volunteer) { $("formBox").style.display = "block"; if (volunteer) configureVolunteer(); }
+    $("qrImage").src = QR_URL;
+    $("qrImage").addEventListener("error", () => { $("qrMessage").innerText = "QR image load nahi hui. Drive sharing me 'Anyone with the link' select karein."; });
     $("mode").addEventListener("change", updateQr);
     $("collectionForm").addEventListener("submit", saveCollection);
-    $("cancelEdit").addEventListener("click", cancelEdit);
+    $("cancelEdit").addEventListener("click", resetCollectionEdit);
     ["search", "semesterFilter", "branchFilter", "categoryFilter"].forEach(id => $(id).addEventListener("input", render));
     $("clearFilters").addEventListener("click", () => { $("search").value = ""; $("semesterFilter").value = ""; $("branchFilter").value = ""; $("categoryFilter").value = ""; render(); });
     updateQr(); loadData();
@@ -140,11 +142,12 @@ function saveCollection(event) {
     if (editingIndex !== null && !admin) return alert("Sirf Admin entry update kar sakta hai.");
     if (!validVolunteerEntry()) return alert("Volunteer Faculty entry nahi kar sakta; 5th semester volunteer Lateral Entry bhi nahi bhar sakta.");
     const payload = { action: editingIndex === null ? "addCollection" : "updateCollection", name: $("name").value, branch: $("branch").value, semester: $("semester").value, category: $("category").value, amount: $("amount").value, mode: $("mode").value, rowIndex: editingIndex };
-    fetch(API_URL, { method: "POST", body: JSON.stringify(payload) }).then(response => response.json()).then(result => { if (result.status !== "success") throw new Error(result.message); alert(editingIndex === null ? "Saved Successfully!" : "Updated Successfully!"); cancelEdit(); loadData(); }).catch(() => alert("Data save nahi ho saka."));
+    fetch(API_URL, { method: "POST", body: JSON.stringify(payload) }).then(response => response.json()).then(result => { if (result.status !== "success") throw new Error(result.message); alert(editingIndex === null ? "Saved Successfully!" : "Updated Successfully!"); resetCollectionEdit(); loadData(); }).catch(() => alert("Data save nahi ho saka."));
 }
 function startEdit(index) { if (localStorage.getItem("isAdmin") !== "true") return; const row = rows[index]; if (!row) return; editingIndex = index; $("name").value = row[0] || ""; $("branch").value = row[1] || ""; $("semester").value = row[2] || ""; $("category").value = row[3] || "Regular"; $("amount").value = row[4] || ""; $("mode").value = row[5] || "Cash"; $("formTitle").innerText = "Edit Collection Entry"; $("saveButton").innerText = "Update Collection"; $("cancelEdit").style.display = "block"; updateQr(); $("formBox").scrollIntoView({ behavior: "smooth" }); }
-function cancelEdit() { editingIndex = null; $("collectionForm").reset(); $("formTitle").innerText = "New Collection Entry"; $("saveButton").innerText = "Save Collection"; $("cancelEdit").style.display = "none"; $("qrBox").style.display = "none"; if (localStorage.getItem("userRole") === "Volunteer") configureVolunteer(); }
+function resetCollectionEdit() { editingIndex = null; $("collectionForm").reset(); $("formTitle").innerText = "New Collection Entry"; $("saveButton").innerText = "Save Collection"; $("cancelEdit").style.display = "none"; $("qrBox").style.display = "none"; if (localStorage.getItem("userRole") === "Volunteer") configureVolunteer(); }
 function removeEntry(index) { if (localStorage.getItem("isAdmin") !== "true") return; if (!confirm("Kya aap ye entry delete karna chahte hain?")) return; fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "deleteCollection", rowIndex: index }) }).then(response => response.json()).then(result => { if (result.status !== "success") throw new Error(result.message); alert("Deleted Successfully!"); loadData(); }).catch(() => alert("Entry delete nahi ho saki.")); }
 </script>
 </body>
 </html>
+```[cite: 2]

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collection Entry - Event Manager</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: Segoe UI, sans-serif; background: #f4f6f9; color: #1e293b; }
+        nav { background: #4f46e5; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: relative; }
+        nav .nav-brand { font-size: 18px; font-weight: bold; }
+        .menu-btn { display: none; background: none; border: 0; color: white; font-size: 24px; width: auto; padding: 0; }
+        nav ul { list-style: none; display: flex; gap: 12px; margin: 0; padding: 0; }
+        nav a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; margin: 0; }
+        nav a.active { font-weight: bold; }
+        .container { max-width: 1100px; margin: 22px auto; padding: 0 15px; }
+        .box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px #0000000d; margin-bottom: 18px; }
+        h1, h2 { margin-top: 0; color: #3730a3; }
+        h1 { font-size: 22px; } h2 { font-size: 17px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+        input, select, button { width: 100%; padding: 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        button { background: #4f46e5; color: white; border: 0; font-weight: 600; cursor: pointer; }
+        .danger { background: #dc2626; } .warning { background: #d97706; }
+        .actions { display: flex; gap: 6px; min-width: 130px; }
+        .actions button { padding: 6px; }
+        .qr { display: none; text-align: center; padding: 10px; margin-top: 10px; background: #f8fafc; border: 1px dashed #cbd5e1; }
+        .qr img { width: 170px; height: 170px; object-fit: contain; background: white; }
+        .filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+        .table-wrap { overflow-x: auto; } table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+        th, td { text-align: left; padding: 9px; border-bottom: 1px solid #e2e8f0; } th { background: #f8fafc; }
+        #formBox { display: none; } #cancelEdit { display: none; background: #64748b; margin-top: 8px; }
+        @media (max-width: 768px) {
+            .grid, .filters { grid-template-columns: 1fr; }
+            .menu-btn { display: block; }
+            nav ul { display: none; flex-direction: column; width: 100%; position: absolute; top: 100%; left: 0; background: #4338ca; padding: 15px 20px; z-index: 1000; gap: 12px; }
+            nav ul.active { display: flex; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-brand">🎓 College Event Manager</div>
+        <button class="menu-btn" id="menuButton" type="button" aria-label="Open navigation">☰</button>
+        <ul id="navLinks">
+            <li><a href="index.html">Dashboard</a></li>
+            <li><a href="collection-entry.html" class="active">Collection</a></li>
+            <li><a href="expenses.html">Expenses</a></li>
+            <li><a href="tasks.html">Tasks &amp; Programs</a></li>
+            <li><a href="participants.html">Participants</a></li>
+            <li><a href="access.html">Access Control</a></li>
+        </ul>
+    </nav>
+    <main class="container">
+        <div class="box"><h1>Collection Management</h1><p id="roleText">Read-only mode</p></div>
+
+        <section class="box" id="formBox">
+            <h2 id="formTitle">New Collection Entry</h2>
+            <form id="collectionForm">
+                <div class="grid">
+                    <div><label for="name">Name / Faculty Name</label><input id="name" required></div>
+                    <div><label for="branch">Branch</label><select id="branch" required><option value="">Select Branch</option><option>ME</option><option>CS</option><option>AE</option><option>Civil</option></select></div>
+                    <div><label for="semester">Semester</label><select id="semester" required><option value="">Select Semester</option><option>3rd</option><option>5th</option></select></div>
+                    <div><label for="category">Category</label><select id="category" required><option value="Regular">Regular Student</option><option value="Lateral">Lateral Entry Student</option><option value="Faculty">Faculty Member</option></select></div>
+                    <div><label for="amount">Amount (₹)</label><input id="amount" type="number" min="1" required></div>
+                    <div><label for="mode">Payment Mode</label><select id="mode"><option>Cash</option><option>UPI</option></select></div>
+                </div>
+                <div class="qr" id="qrBox"><img src="https://lh3.googleusercontent.com/d/1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc" alt="UPI QR Code"><p>UPI payment ke liye QR scan karein.</p></div>
+                <button id="saveButton" type="submit">Save Collection</button>
+                <button id="cancelEdit" type="button">Cancel Edit</button>
+            </form>
+        </section>
+
+        <section class="box">
+            <h2>Collection Records</h2>
+            <input id="search" placeholder="Naam ya branch se search karein">
+            <div class="filters" style="margin-top:10px">
+                <select id="semesterFilter"><option value="">All Semesters</option><option>3rd</option><option>5th</option></select>
+                <select id="branchFilter"><option value="">All Branches</option><option>ME</option><option>CS</option><option>AE</option><option>Civil</option></select>
+                <select id="categoryFilter"><option value="">All Categories</option><option value="Regular">Regular</option><option value="Lateral">Lateral</option><option value="Faculty">Faculty</option></select>
+                <button id="clearFilters" type="button">Clear Filters</button>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Name</th><th>Branch</th><th>Semester</th><th>Category</th><th>Amount</th><th>Mode</th><th>Timestamp</th><th id="actionsHeader" style="display:none">Actions</th></tr></thead><tbody id="records"><tr><td colspan="8">Loading...</td></tr></tbody></table></div>
+        </section>
+    </main>
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwwx9910cJHe03jNhXUSMXptGy4IltCkDzx8yGlABVogYgPZ2TmBFNuY8WuK3FSeWFY/exec";
+const QR_URL = "https://lh3.googleusercontent.com/d/1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc";
+let rows = [];
+let editingIndex = null;
+const $ = id => document.getElementById(id);
+
+$("menuButton").addEventListener("click", () => $("navLinks").classList.toggle("active"));
+
+window.addEventListener("load", () => {
+    const role = localStorage.getItem("userRole");
+    const admin = localStorage.getItem("isAdmin") === "true";
+    const volunteer = role === "Volunteer";
+    $("roleText").innerText = admin ? "Admin: full collection access" : volunteer ? `Volunteer: ${localStorage.getItem("volunteerBranch")} - ${localStorage.getItem("volunteerSemester")}` : "Read-only mode";
+    $("actionsHeader").style.display = admin ? "table-cell" : "none";
+    if (admin || volunteer) { $("formBox").style.display = "block"; if (volunteer) configureVolunteer(); }
+    $("mode").addEventListener("change", updateQr);
+    $("collectionForm").addEventListener("submit", saveCollection);
+    $("cancelEdit").addEventListener("click", cancelEdit);
+    ["search", "semesterFilter", "branchFilter", "categoryFilter"].forEach(id => $(id).addEventListener("input", render));
+    $("clearFilters").addEventListener("click", () => { $("search").value = ""; $("semesterFilter").value = ""; $("branchFilter").value = ""; $("categoryFilter").value = ""; render(); });
+    updateQr(); loadData();
+});
+
+function configureVolunteer() {
+    const branch = localStorage.getItem("volunteerBranch");
+    const semester = localStorage.getItem("volunteerSemester");
+    if (!branch || !semester) { alert("Volunteer session incomplete hai."); location.href = "access.html"; return; }
+    $("branch").value = branch; $("semester").value = semester; $("branch").disabled = true; $("semester").disabled = true;
+    [...$("category").options].forEach(option => option.hidden = option.value === "Faculty" || (semester === "5th" && option.value === "Lateral"));
+    $("category").value = "Regular";
+}
+
+function updateQr() { $("qrBox").style.display = $("mode").value === "UPI" ? "block" : "none"; }
+function loadData() { fetch(API_URL + "?action=getData").then(response => response.json()).then(data => { rows = data.Collection || []; render(); }).catch(() => alert("Data load nahi ho saka.")); }
+function render() {
+    const admin = localStorage.getItem("isAdmin") === "true";
+    const search = $("search").value.toLowerCase(); const sem = $("semesterFilter").value; const branch = $("branchFilter").value; const category = $("categoryFilter").value;
+    const body = $("records"); body.innerHTML = "";
+    rows.slice(1).forEach((row, offset) => {
+        const index = offset + 1; const text = `${row[0] || ""} ${row[1] || ""}`.toLowerCase();
+        if (!text.includes(search) || (sem && row[2] !== sem) || (branch && row[1] !== branch) || (category && row[3] !== category)) return;
+        body.innerHTML += `<tr><td>${row[0] || "-"}</td><td>${row[1] || "-"}</td><td>${row[2] || "-"}</td><td>${row[3] || "-"}</td><td>₹ ${row[4] || 0}</td><td>${row[5] || "-"}</td><td>${row[6] || "-"}</td>${admin ? `<td><div class="actions"><button class="warning" onclick="startEdit(${index})">Edit</button><button class="danger" onclick="removeEntry(${index})">Delete</button></div></td>` : ""}</tr>`;
+    });
+    if (!body.innerHTML) body.innerHTML = `<tr><td colspan="${admin ? 8 : 7}">Koi record nahi mila.</td></tr>`;
+}
+
+function validVolunteerEntry() {
+    if (localStorage.getItem("userRole") !== "Volunteer") return true;
+    const semester = $("semester").value; const category = $("category").value;
+    return category !== "Faculty" && !(semester === "5th" && category === "Lateral");
+}
+function saveCollection(event) {
+    event.preventDefault(); const admin = localStorage.getItem("isAdmin") === "true";
+    if (editingIndex !== null && !admin) return alert("Sirf Admin entry update kar sakta hai.");
+    if (!validVolunteerEntry()) return alert("Volunteer Faculty entry nahi kar sakta; 5th semester volunteer Lateral Entry bhi nahi bhar sakta.");
+    const payload = { action: editingIndex === null ? "addCollection" : "updateCollection", name: $("name").value, branch: $("branch").value, semester: $("semester").value, category: $("category").value, amount: $("amount").value, mode: $("mode").value, rowIndex: editingIndex };
+    fetch(API_URL, { method: "POST", body: JSON.stringify(payload) }).then(response => response.json()).then(result => { if (result.status !== "success") throw new Error(result.message); alert(editingIndex === null ? "Saved Successfully!" : "Updated Successfully!"); cancelEdit(); loadData(); }).catch(() => alert("Data save nahi ho saka."));
+}
+function startEdit(index) { if (localStorage.getItem("isAdmin") !== "true") return; const row = rows[index]; if (!row) return; editingIndex = index; $("name").value = row[0] || ""; $("branch").value = row[1] || ""; $("semester").value = row[2] || ""; $("category").value = row[3] || "Regular"; $("amount").value = row[4] || ""; $("mode").value = row[5] || "Cash"; $("formTitle").innerText = "Edit Collection Entry"; $("saveButton").innerText = "Update Collection"; $("cancelEdit").style.display = "block"; updateQr(); $("formBox").scrollIntoView({ behavior: "smooth" }); }
+function cancelEdit() { editingIndex = null; $("collectionForm").reset(); $("formTitle").innerText = "New Collection Entry"; $("saveButton").innerText = "Save Collection"; $("cancelEdit").style.display = "none"; $("qrBox").style.display = "none"; if (localStorage.getItem("userRole") === "Volunteer") configureVolunteer(); }
+function removeEntry(index) { if (localStorage.getItem("isAdmin") !== "true") return; if (!confirm("Kya aap ye entry delete karna chahte hain?")) return; fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "deleteCollection", rowIndex: index }) }).then(response => response.json()).then(result => { if (result.status !== "success") throw new Error(result.message); alert("Deleted Successfully!"); loadData(); }).catch(() => alert("Entry delete nahi ho saki.")); }
+</script>
+</body>
+</html>

@@ -36,6 +36,11 @@
         .call-btn { background: #10b981; color: white; padding: 3px 6px; border-radius: 4px; text-decoration: none; font-size: 11px; display: inline-block; margin-top: 2px; }
         .badge-paid { background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
         .badge-pending { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+        .admin-actions { display: flex; gap: 6px; min-width: 130px; }
+        .admin-actions button { width: auto; padding: 6px 8px; font-size: 12px; }
+        .edit-btn { background: #f59e0b; }
+        .delete-btn { background: #ef4444; }
+        #cancelExpenseEdit { display: none; background: #64748b; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -44,7 +49,7 @@
         <button class="menu-btn" onclick="toggleMenu()">☰</button>
         <ul id="navLinks">
             <li><a href="index.html">Dashboard</a></li>
-            <li><a href="collection.html">Collection</a></li>
+            <li><a href="collection-entry.html">Collection</a></li>
             <li><a href="expenses.html" style="font-weight:bold;">Expenses</a></li>
             <li><a href="tasks.html">Tasks & Programs</a></li>
             <li><a href="participants.html">Participants</a></li>
@@ -70,7 +75,7 @@
 
         <!-- Add Expense Form (Admin Only) -->
         <div class="box" id="adminExpenseBox" style="display: none;">
-            <h2>💸 Add New Expense (Admin Only)</h2>
+            <h2 id="expenseFormTitle">💸 Add New Expense (Admin Only)</h2>
             <form id="expenseForm" onsubmit="submitExpense(event)">
                 <div class="form-group">
                     <label>Item / Purpose</label>
@@ -88,7 +93,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Worker Name (Kaam Karne Wala)</label>
+                    <label>Vender Name (Kaam Karne Wala)</label>
                     <input type="text" id="eWorkerName" required placeholder="Vyakti ka naam">
                 </div>
                 <div class="form-group">
@@ -96,10 +101,12 @@
                     <input type="tel" id="eWorkerPhone" required maxlength="10" pattern="[0-9]{10}" placeholder="10 digit mobile number" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                 </div>
                 <div class="form-group">
-                    <label>Bill Link (Optional)</label>
-                    <input type="text" id="eBill" placeholder="Google Drive Link">
+                    <label>Bill Photo (Optional)</label>
+                    <input type="file" id="eBillPhoto" accept="image/*">
+                    <small style="display:block; color:#64748b; margin-top:4px;">Maximum 5 MB</small>
                 </div>
                 <button type="submit" id="saveExpBtn">Save Expense</button>
+                <button type="button" id="cancelExpenseEdit" onclick="cancelExpenseEdit()">Cancel Edit</button>
             </form>
         </div>
 
@@ -120,10 +127,11 @@
                             <th>Phone (Call)</th>
                             <th>Bill</th>
                             <th>Added By</th>
+                            <th id="expenseActionsHeader" style="display:none;">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="expenseTableBody">
-                        <tr><td colspan="7" style="text-align:center;">Loading data...</td></tr>
+                        <tr><td colspan="8" style="text-align:center;">Loading data...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -131,14 +139,16 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycby4pRKIR-YfZ6esigP8V1B9tWdYRuLUvkB2tlYNr72ICbLx9UBqNcRh-bG0fXVYoYrz/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbyLVHNEDKc9meyFdAzZx6hmoMAdbaP-tfPNtvvq-yiVuFfct2pJX-JtymHeob_C-Ng/exec";
         let globalExpenseRows = [];
         let globalCollectionRows = [];
+        let editingExpenseIndex = null;
 
         function toggleMenu() { document.getElementById("navLinks").classList.toggle("active"); }
 
         window.onload = function() {
             let isAdmin = localStorage.getItem("isAdmin") === "true";
+            document.getElementById("expenseActionsHeader").style.display = isAdmin ? "table-cell" : "none";
             if(isAdmin) { document.getElementById("adminExpenseBox").style.display = "block"; }
             
             let cached = localStorage.getItem("eventManagerData");
@@ -187,6 +197,7 @@
             let tbody = document.getElementById("expenseTableBody");
             tbody.innerHTML = "";
             let hasRecord = false;
+            let isAdmin = localStorage.getItem("isAdmin") === "true";
             
             for(let i=1; i<rows.length; i++) {
                 let r = rows[i];
@@ -198,13 +209,14 @@
                 let rawStatus = r[2] || 'Pending';
                 let statusBadge = rawStatus === 'Paid' ? `<span class="badge-paid">Paid</span>` : `<span class="badge-pending">Pending</span>`;
                 
-                // Sheet ke naye columns mapping ke mutabik:
-                // r[0]=Item, r[1]=Amount, r[2]=Status, r[3]=WorkerName, r[4]=WorkerPhone, r[5]=BillUrl, r[6]=AddedBy
                 let workerName = r[3] || '-';
                 let phoneNum = r[4] || '';
                 let phoneCol = phoneNum ? `<a href="tel:${phoneNum}" class="call-btn">📞 ${phoneNum}</a>` : '-';
-                let link = r[5] ? `<a href="${r[5]}" target="_blank">View Bill</a>` : '-';
+                
+                let link = r[5] ? `<a href="${r[5]}" target="_blank" style="color: #4f46e5; font-weight: bold; text-decoration: underline;">View Bill</a>` : '-';
+                
                 let addedBy = r[6] || '-';
+                let actions = isAdmin ? `<td><div class="admin-actions"><button type="button" class="edit-btn" onclick="editExpense(${globalExpenseRows.indexOf(r)})">Edit</button><button type="button" class="delete-btn" onclick="deleteExpense(${globalExpenseRows.indexOf(r)})">Delete</button></div></td>` : '';
                 
                 tbody.innerHTML += `<tr>
                     <td><b>${item}</b></td>
@@ -214,10 +226,11 @@
                     <td>${phoneCol}</td>
                     <td>${link}</td>
                     <td>${addedBy}</td>
+                    ${actions}
                 </tr>`;
             }
             if(!hasRecord) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding: 15px;">Koi expense record nahi mila.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${isAdmin ? 8 : 7}" style="text-align:center; color:#64748b; padding: 15px;">Koi expense record nahi mila.</td></tr>`;
             }
         }
 
@@ -240,9 +253,19 @@
 
         function submitExpense(e) {
             e.preventDefault();
+            if(localStorage.getItem("isAdmin") !== "true") {
+                alert("Sirf Admin expense add ya update kar sakta hai.");
+                return;
+            }
             let phone = document.getElementById("eWorkerPhone").value;
             if(phone.length !== 10) {
                 alert("Worker ka mobile number exact 10 digits ka hona chahiye!");
+                return;
+            }
+
+            let photoFile = document.getElementById("eBillPhoto").files[0];
+            if(photoFile && photoFile.size > 5 * 1024 * 1024) {
+                alert("Bill photo 5 MB se chhoti honi chahiye.");
                 return;
             }
 
@@ -250,31 +273,91 @@
             btn.innerText = "Saving...";
             btn.disabled = true;
 
-            let payload = {
-                action: "addExpense",
-                item: document.getElementById("eItem").value,
-                amount: document.getElementById("eAmount").value,
-                status: document.getElementById("eStatus").value,
-                workerName: document.getElementById("eWorkerName").value,
-                workerPhone: phone,
-                billUrl: document.getElementById("eBill").value,
-                addedBy: "Admin"
-            };
-            
-            fetch(API_URL, {method: "POST", body: JSON.stringify(payload)})
+            readBillPhoto(photoFile).then(({base64Data, mimeType, fileName}) => {
+                let payload = {
+                    action: editingExpenseIndex === null ? "addExpense" : "updateExpense",
+                    item: document.getElementById("eItem").value,
+                    amount: document.getElementById("eAmount").value,
+                    status: document.getElementById("eStatus").value,
+                    workerName: document.getElementById("eWorkerName").value,
+                    workerPhone: phone,
+                    fileData: base64Data,
+                    fileMimeType: mimeType,
+                    fileName: fileName,
+                    addedBy: "Admin",
+                    rowIndex: editingExpenseIndex
+                };
+                return fetch(API_URL, {method: "POST", body: JSON.stringify(payload)});
+            })
             .then(res => res.json())
             .then(data => {
-                alert("Saved Successfully!");
+                if(data.status !== "success") throw new Error(data.message || "Save failed");
+                alert(editingExpenseIndex === null ? "Saved Successfully!" : "Expense updated successfully!");
                 document.getElementById("expenseForm").reset();
                 btn.innerText = "Save Expense";
                 btn.disabled = false;
+                cancelExpenseEdit();
                 localStorage.removeItem("eventManagerData");
                 fetchData();
             }).catch(err => {
-                alert("Error saving!");
+                alert("Error saving: " + err.message);
                 btn.innerText = "Save Expense";
                 btn.disabled = false;
             });
+        }
+
+        function readBillPhoto(file) {
+            if(!file) return Promise.resolve({base64Data: "", mimeType: "", fileName: ""});
+            return new Promise((resolve, reject) => {
+                let reader = new FileReader();
+                reader.onload = () => {
+                    let fullString = reader.result;
+                    let mimeType = fullString.substring(fullString.indexOf(":") + 1, fullString.indexOf(";"));
+                    let base64Data = fullString.split(",")[1];
+                    resolve({base64Data, mimeType, fileName: file.name});
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function editExpense(rowIndex) {
+            if(localStorage.getItem("isAdmin") !== "true") return;
+            let row = globalExpenseRows[rowIndex];
+            if(!row) return;
+            editingExpenseIndex = rowIndex;
+            document.getElementById("eItem").value = row[0] || "";
+            document.getElementById("eAmount").value = row[1] || "";
+            document.getElementById("eStatus").value = row[2] || "Pending";
+            document.getElementById("eWorkerName").value = row[3] || "";
+            document.getElementById("eWorkerPhone").value = row[4] || "";
+            document.getElementById("expenseFormTitle").innerText = "✏️ Edit Expense (Admin Only)";
+            document.getElementById("saveExpBtn").innerText = "Update Expense";
+            document.getElementById("cancelExpenseEdit").style.display = "block";
+            document.getElementById("adminExpenseBox").scrollIntoView({behavior: "smooth"});
+        }
+
+        function cancelExpenseEdit() {
+            editingExpenseIndex = null;
+            document.getElementById("expenseForm").reset();
+            document.getElementById("expenseFormTitle").innerText = "💸 Add New Expense (Admin Only)";
+            document.getElementById("saveExpBtn").innerText = "Save Expense";
+            document.getElementById("cancelExpenseEdit").style.display = "none";
+        }
+
+        function deleteExpense(rowIndex) {
+            if(localStorage.getItem("isAdmin") !== "true") return;
+            let row = globalExpenseRows[rowIndex];
+            if(!row || !confirm(`Kya aap ${row[0]} expense delete karna chahte hain?`)) return;
+            fetch(API_URL, {method: "POST", body: JSON.stringify({action: "deleteExpense", rowIndex: rowIndex})})
+            .then(res => res.json())
+            .then(data => {
+                if(data.status !== "success") throw new Error(data.message || "Delete failed");
+                alert("Expense deleted successfully!");
+                localStorage.removeItem("eventManagerData");
+                fetchData();
+            })
+            .catch(err => alert("Expense delete nahi ho saka."));
         }
     </script>
 </body>

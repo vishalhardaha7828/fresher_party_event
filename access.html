@@ -20,7 +20,7 @@
         .container { max-width: 450px; margin: 30px auto; padding: 0 15px; }
         .box { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; margin-bottom: 20px; }
         h2 { color: #4f46e5; font-size: 18px; margin-bottom: 12px; }
-        input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; margin-bottom: 15px; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; margin-bottom: 15px; }
         input[type="password"] { text-align: center; letter-spacing: 3px; }
         button { background: #4f46e5; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; font-size: 14px; }
         .btn-danger { background: #ef4444; margin-top: 10px; }
@@ -34,7 +34,7 @@
         <button class="menu-btn" onclick="toggleMenu()">☰</button>
         <ul id="navLinks">
             <li><a href="index.html">Dashboard</a></li>
-            <li><a href="collection.html">Collection</a></li>
+            <li><a href="collection-entry.html">Collection</a></li>
             <li><a href="expenses.html">Expenses</a></li>
             <li><a href="tasks.html">Tasks & Programs</a></li>
             <li><a href="participants.html">Participants</a></li>
@@ -43,24 +43,54 @@
     </nav>
     <div class="container">
         <div class="box">
-            <h2>🔐 Admin & Role Access Control</h2>
-            <div id="roleBadge" class="status-badge" style="background:#f1f5f9; color:#475569;">Mode: Normal Viewer</div>
+            <h2>🔐 Role-Based Access Control</h2>
+            <div id="roleBadge" class="status-badge" style="background:#f1f5f9; color:#475569;">Mode: Normal Student (Viewer)</div>
             
             <div id="loginSection">
-                <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Core Committee / Main Admin PIN darj karein.</p>
-                <input type="password" id="adminPin" placeholder="••••" maxlength="4">
-                <button onclick="loginAdmin()">Login as Admin</button>
+                <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Admin ya Branch Volunteer ke roop me login karein.</p>
+                
+                <div class="form-group">Login Type:</div>
+                <select id="loginType" onchange="handleLoginTypeChange()">
+                    <option value="admin">Admin (Full Access)</option>
+                    <option value="volunteer">Branch Volunteer (Collection Access)</option>
+                </select>
+
+                <!-- Admin PIN Input -->
+                <div id="adminPinBox">
+                    <div class="form-group">Admin PIN:</div>
+                    <input type="password" id="adminPin" placeholder="••••" maxlength="4">
+                </div>
+
+                <!-- Volunteer Select Branch & PIN -->
+                <div id="volunteerBox" style="display:none;">
+                    <div class="form-group">Apni Branch Chunein:</div>
+                    <select id="volunteerBranch">
+                        <option value="ME">ME</option>
+                        <option value="CS">CS</option>
+                        <option value="AE">AE</option>
+                        <option value="Civil">Civil</option>
+                    </select>
+                    <div class="form-group">Apna Semester Chunein:</div>
+                    <select id="volunteerSemester">
+                        <option value="3rd">3rd</option>
+                        <option value="5th">5th</option>
+                    </select>
+                    <div class="form-group">Volunteer PIN:</div>
+                    <input type="password" id="volunteerPin" placeholder="••••" maxlength="4">
+                </div>
+
+                <button onclick="loginUser()">Login</button>
             </div>
 
             <div id="logoutSection" style="display:none;">
-                <p style="font-size:13px; color:#166534; margin-bottom:15px;">Aap filhal <strong>Full Admin Access</strong> par hain.</p>
-                <button class="btn-danger" onclick="logoutAdmin()">Logout</button>
+                <p id="logoutMsg" style="font-size:13px; color:#166534; margin-bottom:15px;"></p>
+                <button class="btn-danger" onclick="logoutUser()">Logout</button>
             </div>
         </div>
 
-        <!-- Meeting Details Section -->
+        <!-- Meeting Details Section (Only for Admin) -->
         <div class="box" id="meetingSection" style="display:none;">
-            <h2>📝 Meeting Updates</h2>
+            <h2>📝 Meeting Updates (Admin Only)</h2>
             
             <div class="form-group">Meeting ki Date:</div>
             <input type="date" id="meetingDate">
@@ -75,46 +105,97 @@
         </div>
     </div>
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbxpekf4JVVSsSP506_vAmI_fN23ALJDWtKrTXM15-TYQTpW3-D7tfVf3hoZF-_-FuH4/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbwwx9910cJHe03jNhXUSMXptGy4IltCkDzx8yGlABVogYgPZ2TmBFNuY8WuK3FSeWFY/exec";
         
         function toggleMenu() { document.getElementById("navLinks").classList.toggle("active"); }
 
         window.onload = function() { 
             updateUI(); 
-            document.getElementById("meetingDate").valueAsDate = new Date();
+            let dateField = document.getElementById("meetingDate");
+            if(dateField) dateField.valueAsDate = new Date();
         }
 
-        function loginAdmin() {
-            let pin = document.getElementById("adminPin").value;
-            if(pin === "1234") {
-                localStorage.setItem("isAdmin", "true");
-                alert("Login Successful!");
-                updateUI();
+        function handleLoginTypeChange() {
+            let type = document.getElementById("loginType").value;
+            if(type === "admin") {
+                document.getElementById("adminPinBox").style.display = "block";
+                document.getElementById("volunteerBox").style.display = "none";
             } else {
-                alert("Galat PIN!");
+                document.getElementById("adminPinBox").style.display = "none";
+                document.getElementById("volunteerBox").style.display = "block";
             }
         }
 
-        function logoutAdmin() {
+        function loginUser() {
+            let type = document.getElementById("loginType").value;
+            
+            if(type === "admin") {
+                let pin = document.getElementById("adminPin").value.trim();
+                if(pin === "1234") { // Main Admin PIN
+                    localStorage.setItem("userRole", "Admin");
+                    localStorage.setItem("isAdmin", "true");
+                    localStorage.removeItem("volunteerBranch");
+                    localStorage.removeItem("volunteerSemester");
+                    alert("Admin Login Successful!");
+                    updateUI();
+                } else {
+                    alert("Galat Admin PIN!");
+                }
+            } else {
+                let branch = document.getElementById("volunteerBranch").value;
+                let semester = document.getElementById("volunteerSemester").value;
+                let vPin = document.getElementById("volunteerPin").value.trim();
+                
+                // Har branch ke liye alag PIN set kar sakte hain (Yahan example ke taur par "1111" rakha hai)
+                if(vPin === "1111") {
+                    localStorage.setItem("userRole", "Volunteer");
+                    localStorage.removeItem("isAdmin");
+                    localStorage.setItem("volunteerBranch", branch);
+                    localStorage.setItem("volunteerSemester", semester);
+                    alert(`Volunteer Login Successful for ${branch} Branch!`);
+                    updateUI();
+                } else {
+                    alert("Galat Volunteer PIN!");
+                }
+            }
+        }
+
+        function logoutUser() {
+            localStorage.removeItem("userRole");
             localStorage.removeItem("isAdmin");
+            localStorage.removeItem("volunteerBranch");
+            localStorage.removeItem("volunteerSemester");
             alert("Logged out successfully.");
             updateUI();
         }
 
         function updateUI() {
-            let isAdmin = localStorage.getItem("isAdmin") === "true";
+            let role = localStorage.getItem("userRole");
+            let vBranch = localStorage.getItem("volunteerBranch");
+            let vSemester = localStorage.getItem("volunteerSemester");
             let badge = document.getElementById("roleBadge");
-            if(isAdmin) {
+            let logoutMsg = document.getElementById("logoutMsg");
+            
+            if(role === "Admin") {
                 badge.style.background = "#dcfce7";
                 badge.style.color = "#166534";
                 badge.innerText = "Mode: Full Admin Access Active";
                 document.getElementById("loginSection").style.display = "none";
                 document.getElementById("logoutSection").style.display = "block";
+                logoutMsg.innerHTML = "Aap filhal <strong>Full Admin Access</strong> par hain.";
                 document.getElementById("meetingSection").style.display = "block";
+            } else if(role === "Volunteer") {
+                badge.style.background = "#fef3c7";
+                badge.style.color = "#92400e";
+                badge.innerText = `Mode: Volunteer (${vBranch} - ${vSemester} Semester)`;
+                document.getElementById("loginSection").style.display = "none";
+                document.getElementById("logoutSection").style.display = "block";
+                logoutMsg.innerHTML = `Aap <strong>${vBranch} Branch, ${vSemester} Semester</strong> ke authorized Volunteer hain.`;
+                document.getElementById("meetingSection").style.display = "none";
             } else {
                 badge.style.background = "#f1f5f9";
                 badge.style.color = "#475569";
-                badge.innerText = "Mode: Normal Viewer (Read-Only)";
+                badge.innerText = "Mode: Normal Student (Read-Only)";
                 document.getElementById("loginSection").style.display = "block";
                 document.getElementById("logoutSection").style.display = "none";
                 document.getElementById("meetingSection").style.display = "none";
@@ -139,7 +220,7 @@
             };
 
             let btn = document.querySelector("#meetingSection button");
-            btn.innerText = "Saving to Columns...";
+            btn.innerText = "Saving...";
             btn.disabled = true;
 
             fetch(API_URL, {
@@ -148,7 +229,7 @@
             })
             .then(res => res.json())
             .then(data => {
-                alert("Data Google Sheet ke alag-alag columns me save ho gaya hai!");
+                alert("Meeting Details Saved Successfully!");
                 document.getElementById("meetingDecision").value = "";
                 btn.innerText = "Save Meeting Details";
                 btn.disabled = false;

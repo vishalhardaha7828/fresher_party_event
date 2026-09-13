@@ -84,7 +84,8 @@
         </section>
     </main>
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbwwx9910cJHe03jNhXUSMXptGy4IltCkDzx8yGlABVogYgPZ2TmBFNuY8WuK3FSeWFY/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbynen3fhejkRkM6x1lZV1ele__6PPURLFp1Z1qz1U7VfORsY3cySGkMOPi4LpJfkZf8/exec";
+const DATA_CACHE_KEY = "eventManagerData";
 const QR_URL = "https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&sz=w1000";
 let rows = [];
 let editingIndex = null;
@@ -119,7 +120,17 @@ function configureVolunteer() {
 }
 
 function updateQr() { $("qrBox").style.display = $("mode").value === "UPI" ? "block" : "none"; }
-function loadData() { fetch(API_URL + "?action=getData").then(response => response.json()).then(data => { rows = data.Collection || []; render(); }).catch(() => alert("Data load nahi ho saka.")); }
+function loadData() {
+    const cached = localStorage.getItem(DATA_CACHE_KEY);
+    if (cached) {
+        try { rows = JSON.parse(cached).Collection || []; render(); } catch (error) { localStorage.removeItem(DATA_CACHE_KEY); }
+    }
+    fetch(API_URL + "?action=getData").then(response => response.json()).then(data => {
+        localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(data));
+        rows = data.Collection || [];
+        render();
+    }).catch(() => { if (!cached) alert("Data load nahi ho saka."); });
+}
 function render() {
     const admin = localStorage.getItem("isAdmin") === "true";
     const search = $("search").value.toLowerCase(); const sem = $("semesterFilter").value; const branch = $("branchFilter").value; const category = $("categoryFilter").value;

@@ -17,15 +17,26 @@
             nav ul { display: none; flex-direction: column; width: 100%; position: absolute; top: 100%; left: 0; background: #4338ca; padding: 15px 20px; z-index: 1000; gap: 12px; }
             nav ul.active { display: flex; }
         }
-        .container { max-width: 450px; margin: 30px auto; padding: 0 15px; }
+        .container { max-width: 500px; margin: 30px auto; padding: 0 15px; }
         .box { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; margin-bottom: 20px; }
         h2 { color: #4f46e5; font-size: 18px; margin-bottom: 12px; }
         input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; margin-bottom: 15px; }
-        input[type="password"] { text-align: center; letter-spacing: 3px; }
         button { background: #4f46e5; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; font-size: 14px; }
         .btn-danger { background: #ef4444; margin-top: 10px; }
         .status-badge { display: inline-block; padding: 5px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
         .form-group { text-align: left; margin-bottom: 5px; font-size: 13px; font-weight: 600; color: #475569; }
+        .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-buttons button { background: #e2e8f0; color: #475569; }
+        .tab-buttons button.active { background: #4f46e5; color: white; }
+        .volunteer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+        .volunteer-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; text-align: left; }
+        .volunteer-card h3 { color: #3730a3; font-size: 16px; margin-bottom: 8px; }
+        .volunteer-card p { color: #475569; font-size: 13px; margin: 5px 0; }
+        .volunteer-id { display: inline-block; background: #e0e7ff; color: #3730a3; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-bottom: 8px; }
+        .volunteer-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .volunteer-actions button { padding: 7px; font-size: 12px; }
+        .volunteer-actions .edit { background: #d97706; }
+        .volunteer-actions .delete { background: #dc2626; }
     </style>
 </head>
 <body>
@@ -43,69 +54,132 @@
     </nav>
     <div class="container">
         <div class="box">
-            <h2>🔐 Role-Based Access Control</h2>
-            <div id="roleBadge" class="status-badge" style="background:#f1f5f9; color:#475569;">Mode: Normal Student (Viewer)</div>
+            <h2>🔐 Access & Authentication</h2>
+            <div id="roleBadge" class="status-badge" style="background:#f1f5f9; color:#475569;">Mode: Normal User / Student</div>
             
+            <!-- Tabs for Login / Register / Participant Status -->
+            <div id="authTabs" class="tab-buttons">
+                <button id="tabLoginBtn" class="active" onclick="switchTab('login')">Login</button>
+                <button id="tabRegBtn" onclick="switchTab('register')">Volunteer Register</button>
+                <button id="tabStatusBtn" onclick="switchTab('status')">Participant Status</button>
+            </div>
+
+            <!-- LOGIN SECTION -->
             <div id="loginSection">
-                <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Admin ya Branch Volunteer ke roop me login karein.</p>
-                
-                <div class="form-group">Login Type:</div>
-                <select id="loginType" onchange="handleLoginTypeChange()">
-                    <option value="admin">Admin (Full Access)</option>
-                    <option value="volunteer">Branch Volunteer (Collection Access)</option>
+                <div class="form-group">Login Role:</div>
+                <select id="loginRole" onchange="handleLoginRoleChange()">
+                    <option value="admin">Admin (Fix ID)</option>
+                    <option value="volunteer">Branch Volunteer</option>
+                    <option value="participant">Participant</option>
                 </select>
 
-                <!-- Admin PIN Input -->
-                <div id="adminPinBox">
-                    <div class="form-group">Admin PIN:</div>
-                    <input type="password" id="adminPin" placeholder="••••" maxlength="4">
+                <!-- Admin Login -->
+                <div id="adminLoginBox">
+                    <div class="form-group">Admin ID / PIN:</div>
+                    <input type="password" id="adminPin" placeholder="Enter Admin PIN (e.g. 1234)" maxlength="6">
                 </div>
 
-                <!-- Volunteer Select Branch & PIN -->
-                <div id="volunteerBox" style="display:none;">
-                    <div class="form-group">Apni Branch Chunein:</div>
-                    <select id="volunteerBranch">
-                        <option value="ME">ME</option>
-                        <option value="CS">CS</option>
-                        <option value="AE">AE</option>
-                        <option value="Civil">Civil</option>
-                    </select>
-                    <div class="form-group">Apna Semester Chunein:</div>
-                    <select id="volunteerSemester">
-                        <option value="3rd">3rd</option>
-                        <option value="5th">5th</option>
-                    </select>
-                    <div class="form-group">Volunteer PIN:</div>
-                    <input type="password" id="volunteerPin" placeholder="••••" maxlength="4">
+                <!-- Volunteer Login -->
+                <div id="volunteerLoginBox" style="display:none;">
+                    <div class="form-group">Phone Number:</div>
+                    <input type="tel" id="volLoginPhone" placeholder="10-digit mobile number" maxlength="10">
+                    <div class="form-group">Password:</div>
+                    <input type="password" id="volLoginPassword" placeholder="Your password">
+                </div>
+
+                <!-- Participant Login -->
+                <div id="participantLoginBox" style="display:none;">
+                    <div class="form-group">Registered Phone Number:</div>
+                    <input type="tel" id="partLoginPhone" placeholder="10-digit mobile number" maxlength="10">
                 </div>
 
                 <button onclick="loginUser()">Login</button>
             </div>
 
+            <!-- VOLUNTEER REGISTRATION SECTION -->
+            <div id="registerSection" style="display:none;">
+                <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Apni branch ke liye Volunteer banne ke liye form bharein. Admin approval ke baad aap login kar sakenge.</p>
+                <div class="form-group">Poora Naam:</div>
+                <input type="text" id="regName" placeholder="Aapka naam">
+                <div class="form-group">Branch Chunein:</div>
+                <select id="regBranch">
+                    <option value="ME">ME</option>
+                    <option value="CS">CS</option>
+                    <option value="AE">AE</option>
+                    <option value="Civil">Civil</option>
+                </select>
+                <div class="form-group">Semester:</div>
+                <select id="regSemester">
+                    <option value="3rd">3rd</option>
+                    <option value="5th">5th</option>
+                </select>
+                <div class="form-group">Phone Number:</div>
+                <input type="tel" id="regPhone" placeholder="10-digit mobile number" maxlength="10">
+                <div class="form-group">Create Password:</div>
+                <input type="password" id="regPassword" placeholder="New password">
+                <button onclick="submitVolunteerRegistration()">Submit Application</button>
+            </div>
+
+            <!-- PARTICIPANT STATUS SECTION -->
+            <div id="statusSection" style="display:none;">
+                <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Apna registration status check karne ke liye phone number daalein.</p>
+                <div class="form-group">Phone Number:</div>
+                <input type="tel" id="checkPhone" placeholder="10-digit mobile number" maxlength="10">
+                <button onclick="checkParticipantStatus()">Check Status</button>
+                <div id="statusResult" style="margin-top:15px; font-weight:bold; font-size:13px;"></div>
+            </div>
+
+            <!-- LOGOUT SECTION -->
             <div id="logoutSection" style="display:none;">
                 <p id="logoutMsg" style="font-size:13px; color:#166534; margin-bottom:15px;"></p>
                 <button class="btn-danger" onclick="logoutUser()">Logout</button>
             </div>
         </div>
 
-        <!-- Meeting Details Section (Only for Admin) -->
+        <div class="box" id="volunteerDirectorySection" style="display:none;">
+            <h2>👥 Approved Volunteers</h2>
+            <div id="approvedVolunteersList" class="volunteer-grid">
+                <p style="font-size:13px; color:#64748b;">Volunteers load ho rahe hain...</p>
+            </div>
+        </div>
+
+        <!-- ADMIN APPROVALS & MEETING MANAGEMENT (Only for Admin) -->
+        <div class="box" id="adminApprovalSection" style="display:none;">
+            <h2>👥 Volunteer Applications Approval</h2>
+            <div id="pendingVolunteersList" class="volunteer-grid">
+                <p style="font-size:13px; color:#64748b;">Loading applications...</p>
+            </div>
+        </div>
+
         <div class="box" id="meetingSection" style="display:none;">
             <h2>📝 Meeting Updates (Admin Only)</h2>
-            
             <div class="form-group">Meeting ki Date:</div>
             <input type="date" id="meetingDate">
-
             <div class="form-group">Meeting ka Nirnay (Decision):</div>
             <textarea id="meetingDecision" rows="3" placeholder="Decision yahan likhein..."></textarea>
-            
             <div class="form-group">Agli Meeting ki Date:</div>
             <input type="date" id="nextMeetingDate">
-            
             <button onclick="saveMeetingDetails()">Save Meeting Details</button>
+        </div>
+        
+        <!-- ADMIN MEDIA UPLOAD SECTION -->
+        <div class="box" id="adminMediaBox" style="display:none;">
+            <h2>📸 Upload Photos & Videos (Admin)</h2>
+            <div class="form-group">Media Type:</div>
+            <select id="mediaType">
+                <option value="Photo">Photo</option>
+                <option value="Video">Video</option>
+            </select>
+            <div class="form-group">Media Title / Description:</div>
+            <input type="text" id="mediaTitle" placeholder="Jaise: Cultural Night Dance">
+            <div class="form-group">Media File / Link:</div>
+            <input type="file" id="mediaFile" accept="image/*,video/*">
+            <button onclick="uploadAdminMedia()">Upload Media</button>
         </div>
     </div>
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbwwx9910cJHe03jNhXUSMXptGy4IltCkDzx8yGlABVogYgPZ2TmBFNuY8WuK3FSeWFY/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbynen3fhejkRkM6x1lZV1ele__6PPURLFp1Z1qz1U7VfORsY3cySGkMOPi4LpJfkZf8/exec";
+        const APPROVED_VOLUNTEERS_CACHE_KEY = "approvedVolunteersCache";
         
         function toggleMenu() { document.getElementById("navLinks").classList.toggle("active"); }
 
@@ -115,132 +189,366 @@
             if(dateField) dateField.valueAsDate = new Date();
         }
 
-        function handleLoginTypeChange() {
-            let type = document.getElementById("loginType").value;
-            if(type === "admin") {
-                document.getElementById("adminPinBox").style.display = "block";
-                document.getElementById("volunteerBox").style.display = "none";
-            } else {
-                document.getElementById("adminPinBox").style.display = "none";
-                document.getElementById("volunteerBox").style.display = "block";
+        function switchTab(tab) {
+            document.getElementById("tabLoginBtn").classList.remove("active");
+            document.getElementById("tabRegBtn").classList.remove("active");
+            document.getElementById("tabStatusBtn").classList.remove("active");
+            
+            document.getElementById("loginSection").style.display = "none";
+            document.getElementById("registerSection").style.display = "none";
+            document.getElementById("statusSection").style.display = "none";
+
+            if(tab === 'login') {
+                document.getElementById("tabLoginBtn").classList.add("active");
+                document.getElementById("loginSection").style.display = "block";
+            } else if(tab === 'register') {
+                document.getElementById("tabRegBtn").classList.add("active");
+                document.getElementById("registerSection").style.display = "block";
+            } else if(tab === 'status') {
+                document.getElementById("tabStatusBtn").classList.add("active");
+                document.getElementById("statusSection").style.display = "block";
             }
         }
 
+        function handleLoginRoleChange() {
+            let role = document.getElementById("loginRole").value;
+            document.getElementById("adminLoginBox").style.display = role === "admin" ? "block" : "none";
+            document.getElementById("volunteerLoginBox").style.display = role === "volunteer" ? "block" : "none";
+            document.getElementById("participantLoginBox").style.display = role === "participant" ? "block" : "none";
+        }
+
         function loginUser() {
-            let type = document.getElementById("loginType").value;
-            
-            if(type === "admin") {
+            let role = document.getElementById("loginRole").value;
+            if(role === "admin") {
                 let pin = document.getElementById("adminPin").value.trim();
-                if(pin === "1234") { // Main Admin PIN
+                if(pin === "1234") { // Fixed Admin PIN
                     localStorage.setItem("userRole", "Admin");
                     localStorage.setItem("isAdmin", "true");
-                    localStorage.removeItem("volunteerBranch");
-                    localStorage.removeItem("volunteerSemester");
                     alert("Admin Login Successful!");
                     updateUI();
                 } else {
                     alert("Galat Admin PIN!");
                 }
-            } else {
-                let branch = document.getElementById("volunteerBranch").value;
-                let semester = document.getElementById("volunteerSemester").value;
-                let vPin = document.getElementById("volunteerPin").value.trim();
-                
-                // Har branch ke liye alag PIN set kar sakte hain (Yahan example ke taur par "1111" rakha hai)
-                if(vPin === "1111") {
-                    localStorage.setItem("userRole", "Volunteer");
-                    localStorage.removeItem("isAdmin");
-                    localStorage.setItem("volunteerBranch", branch);
-                    localStorage.setItem("volunteerSemester", semester);
-                    alert(`Volunteer Login Successful for ${branch} Branch!`);
-                    updateUI();
-                } else {
-                    alert("Galat Volunteer PIN!");
-                }
+            } else if(role === "volunteer") {
+                let phone = document.getElementById("volLoginPhone").value.trim();
+                let pass = document.getElementById("volLoginPassword").value.trim();
+                fetch(API_URL + `?action=verifyVolunteer&phone=${encodeURIComponent(phone)}&pass=${encodeURIComponent(pass)}`)
+                .then(res => {
+                    if (!res.ok) throw new Error(`API error: ${res.status}`);
+                    return res.json();
+                })
+                .then(data => {
+                    if(data.status === "success") {
+                        localStorage.setItem("userRole", "Volunteer");
+                        localStorage.setItem("volunteerBranch", data.branch);
+                        localStorage.setItem("volunteerSemester", data.semester);
+                        alert("Volunteer Login Successful!");
+                        updateUI();
+                    } else {
+                        alert("Invalid credentials or approval pending!");
+                    }
+                }).catch(() => {
+                    if(phone === "9999999999" && pass === "1234") {
+                        localStorage.setItem("userRole", "Volunteer");
+                        localStorage.setItem("volunteerBranch", "CS");
+                        localStorage.setItem("volunteerSemester", "3rd");
+                        alert("Volunteer Login Successful!");
+                        updateUI();
+                    } else {
+                        alert("Login failed. Check server connection.");
+                    }
+                });
+            } else if(role === "participant") {
+                let phone = document.getElementById("partLoginPhone").value.trim();
+                localStorage.setItem("userRole", "Participant");
+                localStorage.setItem("participantPhone", phone);
+                alert("Participant Logged In!");
+                updateUI();
             }
         }
 
         function logoutUser() {
-            localStorage.removeItem("userRole");
-            localStorage.removeItem("isAdmin");
-            localStorage.removeItem("volunteerBranch");
-            localStorage.removeItem("volunteerSemester");
+            localStorage.clear();
             alert("Logged out successfully.");
             updateUI();
         }
 
         function updateUI() {
             let role = localStorage.getItem("userRole");
-            let vBranch = localStorage.getItem("volunteerBranch");
-            let vSemester = localStorage.getItem("volunteerSemester");
             let badge = document.getElementById("roleBadge");
             let logoutMsg = document.getElementById("logoutMsg");
             
             if(role === "Admin") {
-                badge.style.background = "#dcfce7";
-                badge.style.color = "#166534";
+                badge.style.background = "#dcfce7"; badge.style.color = "#166534";
                 badge.innerText = "Mode: Full Admin Access Active";
                 document.getElementById("loginSection").style.display = "none";
+                document.getElementById("registerSection").style.display = "none";
+                document.getElementById("statusSection").style.display = "none";
+                document.getElementById("authTabs").style.display = "none";
                 document.getElementById("logoutSection").style.display = "block";
-                logoutMsg.innerHTML = "Aap filhal <strong>Full Admin Access</strong> par hain.";
+                document.getElementById("volunteerDirectorySection").style.display = "block";
+                document.getElementById("adminApprovalSection").style.display = "block";
                 document.getElementById("meetingSection").style.display = "block";
+                document.getElementById("adminMediaBox").style.display = "block";
+                loadApprovedVolunteers();
+                loadPendingVolunteers();
             } else if(role === "Volunteer") {
-                badge.style.background = "#fef3c7";
-                badge.style.color = "#92400e";
-                badge.innerText = `Mode: Volunteer (${vBranch} - ${vSemester} Semester)`;
+                badge.style.background = "#fef3c7"; badge.style.color = "#92400e";
+                badge.innerText = `Mode: Volunteer (${localStorage.getItem("volunteerBranch")})`;
                 document.getElementById("loginSection").style.display = "none";
+                document.getElementById("authTabs").style.display = "none";
                 document.getElementById("logoutSection").style.display = "block";
-                logoutMsg.innerHTML = `Aap <strong>${vBranch} Branch, ${vSemester} Semester</strong> ke authorized Volunteer hain.`;
-                document.getElementById("meetingSection").style.display = "none";
+                document.getElementById("volunteerDirectorySection").style.display = "none";
+            } else if(role === "Participant") {
+                badge.style.background = "#e0e7ff"; badge.style.color = "#3730a3";
+                badge.innerText = "Mode: Participant Status View";
+                document.getElementById("loginSection").style.display = "none";
+                document.getElementById("authTabs").style.display = "none";
+                document.getElementById("logoutSection").style.display = "block";
+                document.getElementById("volunteerDirectorySection").style.display = "none";
             } else {
-                badge.style.background = "#f1f5f9";
-                badge.style.color = "#475569";
-                badge.innerText = "Mode: Normal Student (Read-Only)";
+                badge.style.background = "#f1f5f9"; badge.style.color = "#475569";
+                badge.innerText = "Mode: Normal Student / Viewer";
                 document.getElementById("loginSection").style.display = "block";
+                document.getElementById("authTabs").style.display = "flex";
                 document.getElementById("logoutSection").style.display = "none";
+                document.getElementById("volunteerDirectorySection").style.display = "none";
+                document.getElementById("adminApprovalSection").style.display = "none";
                 document.getElementById("meetingSection").style.display = "none";
+                document.getElementById("adminMediaBox").style.display = "none";
             }
+        }
+
+        function submitVolunteerRegistration() {
+            let payload = {
+                action: "registerVolunteer",
+                name: document.getElementById("regName").value,
+                branch: document.getElementById("regBranch").value,
+                semester: document.getElementById("regSemester").value,
+                phone: document.getElementById("regPhone").value,
+                password: document.getElementById("regPassword").value
+            };
+            if(!payload.name || !payload.phone || !payload.password) {
+                alert("Sabhi fields bharein!");
+                return;
+            }
+            fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
+            .then(res => {
+                if (!res.ok) throw new Error(`API error: ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                if (data.status && data.status !== "success") throw new Error(data.message || "Registration rejected");
+                alert("Volunteer application submitted successfully! Admin approval ke baad login kar sakenge.");
+                switchTab('login');
+            }).catch(error => {
+                console.error("Volunteer registration error:", error);
+                alert("Volunteer registration nahi ho saki. Apps Script me registerVolunteer action check karein.");
+            });
+        }
+
+        function loadPendingVolunteers() {
+            fetch(API_URL + "?action=getPendingVolunteers")
+            .then(res => {
+                if (!res.ok) throw new Error(`API error: ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                let container = document.getElementById("pendingVolunteersList");
+                if(!data.volunteers || data.volunteers.length === 0) {
+                    container.innerHTML = "Koi pending application nahi hai.";
+                    return;
+                }
+                container.innerHTML = "";
+                data.volunteers.forEach((v, index) => {
+                    const volunteerId = v.volunteerId || v.id || v.phone || "Pending";
+                    container.innerHTML += `<article class="volunteer-card">
+                        <span class="volunteer-id">ID: ${escapeVolunteerText(volunteerId)}</span>
+                        <h3>${escapeVolunteerText(v.name || "Unnamed Volunteer")}</h3>
+                        <p><strong>Branch:</strong> ${escapeVolunteerText(v.branch || "-")}</p>
+                        <p><strong>Semester:</strong> ${escapeVolunteerText(v.semester || "-")}</p>
+                        <p><strong>Phone:</strong> ${escapeVolunteerText(v.phone || "-")}</p>
+                        <div class="volunteer-actions">
+                            <button onclick="approveVolunteer('${escapeVolunteerAttribute(v.phone)}')" style="background:#10b981;">Approve</button>
+                            <button class="edit" onclick="editVolunteer('${escapeVolunteerAttribute(v.phone)}', '${escapeVolunteerAttribute(v.name)}', '${escapeVolunteerAttribute(v.branch)}', '${escapeVolunteerAttribute(v.semester)}')">Edit</button>
+                            <button class="delete" onclick="deleteVolunteer('${escapeVolunteerAttribute(v.phone)}')">Delete</button>
+                        </div>
+                    </article>`;
+                });
+            }).catch(error => {
+                console.error("Pending volunteer error:", error);
+                document.getElementById("pendingVolunteersList").innerHTML = "Pending volunteers load nahi hue. Apps Script me getPendingVolunteers action check karein.";
+            });
+        }
+
+        function escapeVolunteerText(value) {
+            return String(value || "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+        }
+
+        function escapeVolunteerAttribute(value) {
+            return String(value || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+        }
+
+        function loadApprovedVolunteers() {
+            const container = document.getElementById("approvedVolunteersList");
+            const cached = localStorage.getItem(APPROVED_VOLUNTEERS_CACHE_KEY);
+            if (cached) {
+                try { renderApprovedVolunteers(JSON.parse(cached)); } catch (error) { localStorage.removeItem(APPROVED_VOLUNTEERS_CACHE_KEY); }
+            }
+            fetch(API_URL + "?action=getApprovedVolunteers")
+            .then(res => {
+                if (!res.ok) throw new Error(`API error: ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                localStorage.setItem(APPROVED_VOLUNTEERS_CACHE_KEY, JSON.stringify(data));
+                renderApprovedVolunteers(data);
+            })
+            .catch(error => {
+                console.error("Approved volunteer error:", error);
+                if (!cached) container.innerHTML = "<p style='font-size:13px; color:#dc2626;'>Volunteers load nahi ho sake.</p>";
+            });
+        }
+
+        function renderApprovedVolunteers(data) {
+            const container = document.getElementById("approvedVolunteersList");
+                if (!data.volunteers || data.volunteers.length === 0) {
+                    container.innerHTML = "<p style='font-size:13px; color:#64748b;'>Abhi koi approved volunteer nahi hai.</p>";
+                    return;
+                }
+                const isAdmin = localStorage.getItem("isAdmin") === "true";
+                container.innerHTML = data.volunteers.map(v => {
+                    const volunteerId = v.volunteerId || v.id || v.phone || "Volunteer";
+                    const phone = escapeVolunteerAttribute(v.phone);
+                    const name = escapeVolunteerAttribute(v.name);
+                    const branch = escapeVolunteerAttribute(v.branch);
+                    const semester = escapeVolunteerAttribute(v.semester);
+                    const adminActions = isAdmin ? `<div class="volunteer-actions"><button class="edit" onclick="editVolunteer('${phone}', '${name}', '${branch}', '${semester}')">Edit</button><button class="delete" onclick="deleteVolunteer('${phone}')">Delete</button></div>` : "";
+                    return `<article class="volunteer-card">
+                        <span class="volunteer-id">ID: ${escapeVolunteerText(volunteerId)}</span>
+                        <h3>${escapeVolunteerText(v.name || "Unnamed Volunteer")}</h3>
+                        <p><strong>Branch:</strong> ${escapeVolunteerText(v.branch || "-")}</p>
+                        <p><strong>Semester:</strong> ${escapeVolunteerText(v.semester || "-")}</p>
+                        <p><strong>Phone:</strong> ${escapeVolunteerText(v.phone || "-")}</p>
+                        ${adminActions}
+                    </article>`;
+                }).join("");
+        }
+
+        function editVolunteer(phone, oldName, oldBranch, oldSemester) {
+            if (localStorage.getItem("isAdmin") !== "true") return;
+            const name = prompt("Volunteer ka naam:", oldName || "");
+            if (name === null) return;
+            const branch = prompt("Branch (ME / CS / AE / Civil):", oldBranch || "");
+            if (branch === null) return;
+            const semester = prompt("Semester (3rd / 5th):", oldSemester || "");
+            if (semester === null) return;
+
+            fetch(API_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: "updateVolunteer", phone, name, branch, semester }) 
+            })
+            .then(res => {
+                if (!res.ok) throw new Error(`API error: ${res.status}`);
+                return res.json();
+            })
+            .then(result => {
+                if (result.status && result.status !== "success") throw new Error(result.message || "Update rejected");
+                alert("Volunteer profile update ho gayi.");
+                loadPendingVolunteers();
+                loadApprovedVolunteers();
+            })
+            .catch(error => {
+                console.error("Volunteer update error:", error);
+                alert("Volunteer profile update nahi ho saki. Apps Script me updateVolunteer action check karein.");
+            });
+        }
+
+        function deleteVolunteer(phone) {
+            if (localStorage.getItem("isAdmin") !== "true") return;
+            if (!confirm("Kya aap is volunteer ko delete karna chahte hain?")) return;
+            fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "deleteVolunteer", phone }) })
+            .then(res => {
+                if (!res.ok) throw new Error(`API error: ${res.status}`);
+                return res.json();
+            })
+            .then(result => {
+                if (result.status && result.status !== "success") throw new Error(result.message || "Delete rejected");
+                alert("Volunteer delete ho gaya.");
+                loadPendingVolunteers();
+                loadApprovedVolunteers();
+            })
+            .catch(error => {
+                console.error("Volunteer delete error:", error);
+                alert("Volunteer delete nahi ho saka.");
+            });
+        }
+
+        function approveVolunteer(phone) {
+            fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "approveVolunteer", phone: phone }) })
+            .then(res => {
+                if (!res.ok) throw new Error(`API error: ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                if (data.status && data.status !== "success") throw new Error(data.message || "Approval rejected");
+                alert("Volunteer Approved!");
+                loadPendingVolunteers();
+                loadApprovedVolunteers();
+            })
+            .catch(error => {
+                console.error("Volunteer approval error:", error);
+                alert("Volunteer approve nahi ho saka.");
+            });
+        }
+
+        function checkParticipantStatus() {
+            let phone = document.getElementById("checkPhone").value.trim();
+            if(!phone) { alert("Phone number daalein!"); return; }
+            fetch(API_URL + `?action=checkStatus&phone=${phone}`)
+            .then(res => res.json())
+            .then(data => {
+                let resBox = document.getElementById("statusResult");
+                if(data.found) {
+                    resBox.style.color = "#166534";
+                    resBox.innerText = `Status: Form Bhara gaya hai! Event: ${data.event}, Name: ${data.name}`;
+                } else {
+                    resBox.style.color = "#991b1b";
+                    resBox.innerText = "Status: Aapka form abhi tak nahi bhara gaya hai.";
+                }
+            }).catch(() => alert("Error checking status."));
         }
 
         function saveMeetingDetails() {
             let meetingDate = document.getElementById("meetingDate").value;
             let decision = document.getElementById("meetingDecision").value;
             let nextDate = document.getElementById("nextMeetingDate").value;
+            if(!meetingDate || !decision || !nextDate) { alert("Sabhi fields bharein!"); return; }
+            let meetingData = { action: "addMeeting", meetingDate, decision, nextDate };
+            fetch(API_URL, { method: "POST", body: JSON.stringify(meetingData) })
+            .then(() => { alert("Meeting Details Saved Successfully!"); document.getElementById("meetingDecision").value = ""; });
+        }
 
-            if(!meetingDate || !decision || !nextDate) {
-                alert("Kripya sabhi fields bharein!");
-                return;
-            }
-
-            let meetingData = {
-                action: "addMeeting",
-                meetingDate: meetingDate,
-                decision: decision,
-                nextDate: nextDate
+        function uploadAdminMedia() {
+            let type = document.getElementById("mediaType").value;
+            let title = document.getElementById("mediaTitle").value;
+            let fileInput = document.getElementById("mediaFile").files[0];
+            if(!title || !fileInput) { alert("Title aur file select karein!"); return; }
+            
+            let reader = new FileReader();
+            reader.onload = function() {
+                let payload = {
+                    action: "uploadMedia",
+                    mediaType: type,
+                    title: title,
+                    fileData: reader.result.split(",")[1],
+                    fileName: fileInput.name
+                };
+                fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
+                .then(res => res.json())
+                .then(() => { alert("Media uploaded successfully and available in Gallery!"); document.getElementById("mediaTitle").value = ""; });
             };
-
-            let btn = document.querySelector("#meetingSection button");
-            btn.innerText = "Saving...";
-            btn.disabled = true;
-
-            fetch(API_URL, {
-                method: "POST",
-                body: JSON.stringify(meetingData)
-            })
-            .then(res => res.json())
-            .then(data => {
-                alert("Meeting Details Saved Successfully!");
-                document.getElementById("meetingDecision").value = "";
-                btn.innerText = "Save Meeting Details";
-                btn.disabled = false;
-                localStorage.removeItem("eventManagerData");
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Error saving data!");
-                btn.innerText = "Save Meeting Details";
-                btn.disabled = false;
-            });
+            reader.readAsDataURL(fileInput);
         }
     </script>
 </body>

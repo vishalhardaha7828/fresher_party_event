@@ -24,33 +24,31 @@
             nav ul.active { display: flex; }
         }
         .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
-        
-        /* Hero Section Fixed Size and Fit */
         .hero { position: relative; width: 100%; height: 320px; overflow: hidden; color: white; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; text-align: center; background: #1e293b; }
-        
-        .hero .slide-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: 0; transition: opacity 1s ease-in-out; }
+        .hero .slide-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1s ease-in-out; }
         .hero .slide-img.active { opacity: 1; }
-
         .hero::after { content: ""; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 1; }
         .hero-content { position: relative; z-index: 2; max-width: 720px; padding: 20px; }
-        .hero h1 { font-size: 24px; line-height: 1.25; margin-bottom: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-        .hero p { font-size: 14px; opacity: 0.95; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-        
-        @media (max-width: 600px) {
-            .hero { height: 250px; }
-            .hero h1 { font-size: 20px; }
-        }
-
+        .hero h1 { font-size: 24px; line-height: 1.25; margin-bottom: 8px; }
+        .hero p { font-size: 14px; opacity: 0.95; }
         .card-box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .card-box h2 { color: #4f46e5; font-size: 16px; margin-bottom: 10px; border-bottom: 2px solid #eee; padding-bottom: 6px; }
         .meeting-card { background: #f8fafc; border-left: 4px solid #4f46e5; padding: 12px; margin-bottom: 10px; border-radius: 4px; font-size: 13px; }
-        .meeting-card p { margin-bottom: 4px; color: #475569; }
         .section-content { display: none; }
         .section-content.active { display: block; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; text-align: left; }
-        th, td { padding: 8px; border-bottom: 1px solid #eee; }
-        th { background: #f8fafc; color: #475569; }
-        .search-box { margin-bottom: 15px; }
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; margin-top: 15px; }
+        .gallery-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; padding: 10px; text-align: center; }
+        .gallery-item img, .gallery-item video, .gallery-item iframe { width: 100%; height: 180px; object-fit: cover; border: 0; border-radius: 6px; background: #000; }
+        .gallery-item.video-item iframe { height: 260px; }
+        .media-open { display: block; position: relative; cursor: pointer; }
+        .media-open::after { content: "🔍"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 8px; border-radius: 50%; background: rgba(15, 23, 42, 0.75); font-size: 18px; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; }
+        .media-open:hover::after { opacity: 1; }
+        
+        .feedback-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        .feedback-table th, .feedback-table td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+        .feedback-table th { background: #f1f5f9; color: #334155; }
+        .btn-danger { background: #dc2626; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .btn-danger:hover { background: #b91c1c; }
     </style>
 </head>
 <body>
@@ -67,21 +65,19 @@
         </ul>
     </nav>
 
+    <!-- Sub Navbar -->
     <div class="sub-nav">
         <a onclick="showSection('workflow')">Work Flow</a>
-        <a onclick="showSection('contact')">Contact</a>
+        <a onclick="showSection('gallery')">🖼️ Gallery (Photos & Videos)</a>
+        <a onclick="showSection('contact')">Contact & Volunteers</a>
         <a onclick="showSection('feedback')">Feedback</a>
         <a onclick="showSection('about')">About</a>
     </div>
 
     <div class="container">
-        <!-- Hero Section with Slideshow -->
         <div class="hero" id="heroSlider">
             <img src="https://lh3.googleusercontent.com/d/1UkrRmhdYgpMDfv7TDc6ROheenpazD93B" class="slide-img active" alt="College Photo 1">
             <img src="https://lh3.googleusercontent.com/d/129e48WuY7T4SAKgCq21PhORXHaVu3ipc" class="slide-img" alt="College Photo 2">
-            <img src="https://lh3.googleusercontent.com/d/1tJMVOjmkizCiOAqbsbVHELzhu4MC7jj6" class="slide-img" alt="College Photo 3">
-            <img src="https://lh3.googleusercontent.com/d/1u5UXrDe22D3TxPraVQlfvzjZZ1V43q6g" class="slide-img" alt="College Photo 4">
-            
             <div class="hero-content">
                 <h1>🏛️ Government Polytechnic College Dindori</h1>
                 <p>Official Fresher & Farewell Event Management Portal</p>
@@ -91,63 +87,60 @@
         <div id="section-home" class="section-content active">
             <div class="card-box">
                 <h2>📌 Pre-Meeting Decisions & Updates</h2>
-                <div id="meetingsContainer">
-                    <p style="font-size: 13px; color: #64748b;">Loading meetings history...</p>
-                </div>
+                <div id="meetingsContainer"><p style="font-size: 13px; color: #64748b;">Loading meetings history...</p></div>
             </div>
+        </div>
+
+        <!-- GALLERY SECTION -->
+        <div id="section-gallery" class="section-content">
             <div class="card-box">
-                <h2>📞 Quick Helpdesk</h2>
-                <p style="font-size: 14px; color: #64748b;">Agar aapko event, collection ya participation se judi koi bhi samasya hai, toh apne Branch CR ya Event Coordinator se sampark karein.</p>
+                <h2>🖼️ Admin Uploaded Photos & Videos</h2>
+                <p style="font-size:13px; color:#64748b; margin-bottom:10px;">Yahan admin dwara upload ki gayi sabhi photos aur videos dikhengi.</p>
+                <div id="galleryContainer" class="gallery-grid">
+                    <p>Loading media...</p>
+                </div>
             </div>
         </div>
 
         <div id="section-workflow" class="section-content">
             <div class="card-box">
                 <h2>⚙️ Event Management Work Flow</h2>
-                <p style="font-size: 14px; color: #475569; line-height: 1.6;">
-                    1. <strong>Planning & Access:</strong> Admin panel ke zariye sabhi CR aur coordinators ko access diya jata hai.<br>
-                    2. <strong>Collection:</strong> Students aur Faculty se Cash ya UPI ke madhyam se collection entry hoti hai.<br>
-                    3. <strong>Expenses Tracking:</strong> Event ki kharidari aur kharche ka hisab yahan update hota hai.<br>
-                    4. <strong>Tasks & Programs:</strong> Stage performance aur decoration ki zimmedari task list me tay hoti hai.
-                </p>
+                <p style="font-size: 14px; color: #475569;">1. Access & Registration<br>2. Collection Management<br>3. Expenses & Gallery Updates</p>
             </div>
         </div>
 
+        <!-- UPDATED CONTACT & APPROVED VOLUNTEERS SECTION -->
         <div id="section-contact" class="section-content">
             <div class="card-box">
-                <h2>📞 Contact Coordinators</h2>
-                <p style="font-size: 14px; color: #475569;">Technical Support ya Event Query ke liye apne department ke head ya CR se judein.</p>
+                <h2>📞 Approved Event Volunteers & Coordinators</h2>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Yahan admin dwara approve kiye gaye sabhi volunteers aur unke branch, semester aur phone numbers ki list hai:</p>
+                
+                <div id="approvedVolunteersContainer">
+                    <p style="font-size: 13px; color: #64748b;">Loading approved volunteers...</p>
+                </div>
             </div>
         </div>
 
+        <!-- FEEDBACK SECTION -->
         <div id="section-feedback" class="section-content">
             <div class="card-box">
                 <h2>💬 Student Feedback Portal</h2>
-                <form id="feedbackForm" onsubmit="submitFeedback(event)" style="margin-bottom: 20px;">
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size:13px; font-weight:500; display:block; margin-bottom:4px;">Aapka Naam</label>
-                        <input type="text" id="fName" required placeholder="Pura naam" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size:13px; font-weight:500; display:block; margin-bottom:4px;">Aapka Message / Feedback</label>
-                        <textarea id="fMsg" required placeholder="Apna sujhav yahan likhein..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; height:80px;"></textarea>
-                    </div>
-                    <button type="submit" id="fbBtn" style="background:#4f46e5; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; width:100%; font-weight:600;">Submit Feedback</button>
+                <form id="feedbackForm" onsubmit="submitFeedback(event)" style="margin-bottom: 25px;">
+                    <input type="text" id="fName" required placeholder="Pura naam" style="width:100%; padding:8px; margin-bottom:10px; border:1px solid #ccc; border-radius:6px;">
+                    <textarea id="fMsg" required placeholder="Apna sujhav yahan likhein..." style="width:100%; padding:8px; margin-bottom:10px; border:1px solid #ccc; border-radius:6px; height:80px;"></textarea>
+                    <button type="submit" id="fbBtn" style="background:#4f46e5; color:white; border:none; padding:10px; border-radius:6px; width:100%; cursor:pointer;">Submit Feedback</button>
                 </form>
 
-                <div id="adminFeedbackArea" style="display:none; border-top:2px solid #eee; padding-top:15px;">
-                    <h3 style="color:#10b981; font-size:15px; margin-bottom:10px;">🔒 Admin Panel: Received Feedbacks</h3>
-                    <div class="search-box">
-                        <input type="text" id="searchFeedbackInput" onkeyup="filterFeedbackTable()" placeholder="🔍 Naam se feedback search karein..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
-                    </div>
-                    <div style="overflow-x:auto;">
-                        <table>
-                            <thead><tr><th>Name</th><th>Message</th><th>Time</th></tr></thead>
-                            <tbody id="feedbackTableBody">
-                                <tr><td colspan="3" style="text-align:center;">Loading feedbacks...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+
+                <div id="adminFeedbackPanel" style="display:none;">
+                <h2>📋 Admin Feedback Panel (View & Delete)</h2>
+                <div style="margin-bottom: 10px;">
+                    <button type="button" onclick="deleteSelectedFeedbacks()" style="background:#dc2626; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:12px;">🗑️ Delete Selected</button>
+                </div>
+                <div id="adminFeedbackContainer" style="overflow-x:auto;">
+                    <p style="font-size:13px; color:#64748b;">Feedbacks load ho rahe hain...</p>
+                </div>
                 </div>
             </div>
         </div>
@@ -155,133 +148,331 @@
         <div id="section-about" class="section-content">
             <div class="card-box">
                 <h2>ℹ️ About Portal</h2>
-                <p style="font-size: 14px; color: #475569;">Yeh portal Government Polytechnic / Engineering College ke Fresher aur Farewell events ko transparent tarike se manage karne ke liye banaya gaya hai.</p>
+                <p style="font-size: 14px; color: #475569;">Yeh portal college ke Fresher aur Farewell events ko manage karne ke liye hai.</p>
             </div>
         </div>
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbwwx9910cJHe03jNhXUSMXptGy4IltCkDzx8yGlABVogYgPZ2TmBFNuY8WuK3FSeWFY/exec";
-        let globalFeedbackRows = [];
+        const API_URL = "https://script.google.com/macros/s/AKfycbynen3fhejkRkM6x1lZV1ele__6PPURLFp1Z1qz1U7VfORsY3cySGkMOPi4LpJfkZf8/exec";
+        const DATA_CACHE_KEY = "eventManagerData";
 
         function toggleMenu() { document.getElementById("navLinks").classList.toggle("active"); }
 
         function showSection(sectionId) {
-            let sections = document.querySelectorAll('.section-content');
-            sections.forEach(sec => sec.classList.remove('active'));
-            document.getElementById('section-' + sectionId).classList.add('active');
-
-            if(sectionId === 'feedback') {
-                let isAdmin = localStorage.getItem("isAdmin") === "true";
-                if(isAdmin) {
-                    document.getElementById("adminFeedbackArea").style.display = "block";
-                    fetchFeedbacks();
-                }
+            document.querySelectorAll('.section-content').forEach(sec => sec.classList.remove('active'));
+            if(sectionId === 'home') {
+                document.getElementById('section-home').classList.add('active');
+            } else {
+                let el = document.getElementById('section-' + sectionId);
+                if(el) el.classList.add('active');
             }
+            if(sectionId === 'gallery') { loadGalleryMedia(); }
+            if(sectionId === 'feedback' && localStorage.getItem("isAdmin") === "true") {
+                document.getElementById("adminFeedbackPanel").style.display = "block";
+                loadFeedbackList();
+            }
+            if(sectionId === 'contact') { loadApprovedVolunteers(); }
         }
 
         window.onload = function() {
-            initHeroSlideshow();
-            let cached = localStorage.getItem("eventManagerData");
-            if(cached) { processMeetings(JSON.parse(cached)); }
             fetchData();
+            startHeroSlider();
         }
 
-        // Slideshow Rotation Script
-        function initHeroSlideshow() {
-            const slides = document.querySelectorAll("#heroSlider .slide-img");
-            if(slides.length > 1) {
-                let currentSlide = 0;
-                setInterval(() => {
-                    slides[currentSlide].classList.remove("active");
-                    currentSlide = (currentSlide + 1) % slides.length;
-                    slides[currentSlide].classList.add("active");
-                }, 4000);
-            }
+        // Hero Image Slider Script
+        function startHeroSlider() {
+            const slides = document.querySelectorAll('.hero .slide-img');
+            if(slides.length <= 1) return;
+            let current = 0;
+            setInterval(() => {
+                slides[current].classList.remove('active');
+                current = (current + 1) % slides.length;
+                slides[current].classList.add('active');
+            }, 4000);
         }
 
         function fetchData() {
+            const cached = localStorage.getItem(DATA_CACHE_KEY);
+            if (cached) {
+                try { processMeetings(JSON.parse(cached)); } catch (error) { localStorage.removeItem(DATA_CACHE_KEY); }
+            }
             fetch(API_URL + "?action=getData")
             .then(res => res.json())
             .then(data => {
-                localStorage.setItem("eventManagerData", JSON.stringify(data));
-                processMeetings(data);
+                localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(data));
+                if(data.Meetings) processMeetings(data);
             }).catch(err => console.error(err));
-        }
-
-        function formatDate(dateStr) {
-            if (!dateStr) return "-";
-            let d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr;
-            let day = String(d.getDate()).padStart(2, '0');
-            let month = String(d.getMonth() + 1).padStart(2, '0');
-            let year = String(d.getFullYear()).slice(-2);
-            return `${day}/${month}/${year}`;
         }
 
         function processMeetings(data) {
             let container = document.getElementById("meetingsContainer");
             if(!data.Meetings || data.Meetings.length <= 1) {
-                container.innerHTML = `<p style="font-size: 13px; color: #64748b;">Abhi tak koi meeting record nahi ki gayi hai.</p>`;
+                container.innerHTML = `<p style="font-size: 13px; color: #64748b;">Koi meeting record nahi hai.</p>`;
                 return;
             }
-
             container.innerHTML = "";
-            let rows = data.Meetings;
-            for(let i = rows.length - 1; i >= 1; i--) {
-                let r = rows[i];
-                if(!r[0] && !r[1]) continue;
-                
-                let mDate = formatDate(r[0]);
-                let decision = r[1] || "-";
-                let nextDate = formatDate(r[2]);
-
-                let card = document.createElement("div");
-                card.className = "meeting-card";
-                card.innerHTML = `
-                    <p><strong>📅 Meeting Date:</strong> ${mDate}</p>
-                    <p><strong>💡 Nirnay (Decision):</strong> ${decision}</p>
-                    <p><strong>⏰ Agli Meeting ki Date:</strong> <span style="color: #10b981; font-weight: bold;">${nextDate}</span></p>
-                `;
-                container.appendChild(card);
+            for(let i = data.Meetings.length - 1; i >= 1; i--) {
+                let r = data.Meetings[i];
+                if(!r[0]) continue;
+                container.innerHTML += `<div class="meeting-card"><p><strong>📅 Date:</strong> ${r[0]}</p><p><strong>💡 Decision:</strong> ${r[1]}</p></div>`;
             }
         }
 
-        function submitFeedback(e) {
-            e.preventDefault();
-            let btn = document.getElementById("fbBtn");
-            btn.innerText = "Submitting...";
-            btn.disabled = true;
+        // Approved Volunteers Loader for Contact Page
+        function loadApprovedVolunteers() {
+            const container = document.getElementById("approvedVolunteersContainer");
+            container.innerHTML = "<p style='font-size:13px; color:#64748b; text-align:center; padding:20px;'>Volunteers load ho rahe hain...</p>";
 
-            let payload = {
-                action: "addFeedback",
-                name: document.getElementById("fName").value,
-                message: document.getElementById("fMsg").value
-            };
-
-            fetch(API_URL, {method: "POST", body: JSON.stringify(payload)})
+            fetch(API_URL + "?action=getApprovedVolunteers")
             .then(res => res.json())
             .then(data => {
-                alert("Feedback Submitted Successfully!");
-                document.getElementById("feedbackForm").reset();
-                btn.innerText = "Submit Feedback";
-                btn.disabled = false;
-            }).catch(err => {
-                alert("Error submitting feedback!");
-                btn.innerText = "Submit Feedback";
-                btn.disabled = false;
+                if (!data.volunteers || data.volunteers.length === 0) {
+                    container.innerHTML = "<p style='font-size:13px; color:#64748b; text-align:center; padding:20px;'>Abhi tak koi bhi volunteer approved nahi hai.</p>";
+                    return;
+                }
+
+                let html = `<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px;">`;
+
+                data.volunteers.forEach(v => {
+                    const name = escapeVolunteerHtml(v.name || "Unnamed Volunteer");
+                    const branch = escapeVolunteerHtml(v.branch || "-");
+                    const semester = escapeVolunteerHtml(v.semester || "-");
+                    const phone = escapeVolunteerHtml(v.phone || "-");
+                    const phoneHref = encodeURIComponent(String(v.phone || ""));
+                    html += `<div style="background:#ffffff; border:1px solid #e2e8f0; border-top:4px solid #4f46e5; padding:16px; border-radius:10px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); transition:transform 0.2s ease, box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 15px -3px rgba(79,70,229,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.05)'">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+                            <div style="background:#e0e7ff; color:#4f46e5; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:16px;">👤</div>
+                            <div><h3 style="color:#1e293b; font-size:15px; font-weight:700; margin:0;">${name}</h3><span style="font-size:11px; background:#eef2ff; color:#4f46e5; padding:2px 6px; border-radius:4px; font-weight:600;">Active Volunteer</span></div>
+                        </div>
+                        <div style="font-size:13px; color:#475569; display:flex; flex-direction:column; gap:4px; margin-bottom:12px;">
+                            <p>📚 <strong>Branch:</strong> <span style="color:#1e293b; font-weight:500;">${branch}</span></p>
+                            <p>🎓 <strong>Semester:</strong> <span style="color:#1e293b; font-weight:500;">${semester}</span></p>
+                        </div>
+                        <a href="tel:${phoneHref}" style="display:flex; align-items:center; justify-content:center; gap:6px; background:#4f46e5; color:white; text-decoration:none; padding:8px 12px; border-radius:6px; font-size:12px; font-weight:600;">📞 Call Karein: ${phone}</a>
+                    </div>`;
+                });
+
+                html += `</div>`;
+                container.innerHTML = html;
+            })
+            .catch(err => {
+                console.error(err);
+                container.innerHTML = "<p style='font-size:13px; color:#dc2626;'>Volunteers load karne me samasya aayi.</p>";
             });
         }
 
-        function fetchFeedbacks() {
-            fetch(API_URL + "?action=getData")
+        function escapeVolunteerHtml(value) {
+            return String(value).replace(/[&<>"']/g, character => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+            }[character]));
+        }
+
+        function submitFeedback(event) {
+            event.preventDefault();
+            const button = document.getElementById("fbBtn");
+            const name = document.getElementById("fName").value.trim();
+            const message = document.getElementById("fMsg").value.trim();
+            if (!name || !message) return;
+
+            button.disabled = true;
+            button.innerText = "Submitting...";
+            fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "submitFeedback", name, message })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.status && result.status !== "success") throw new Error(result.message || "Feedback rejected");
+                document.getElementById("feedbackForm").reset();
+                alert("Feedback successfully submit ho gaya hai!");
+                loadFeedbackList();
+            })
+            .catch(error => {
+                console.error("Feedback error:", error);
+                alert("Feedback submit karne me samasya aayi.");
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.innerText = "Submit Feedback";
+            });
+        }
+
+        function loadFeedbackList() {
+            if (localStorage.getItem("isAdmin") !== "true") return;
+            const container = document.getElementById("adminFeedbackContainer");
+            container.innerHTML = "<p style='font-size:13px; color:#64748b;'>Loading feedbacks...</p>";
+
+            fetch(API_URL + "?action=getFeedback")
             .then(res => res.json())
             .then(data => {
-                let rows = data.Feedback;
-                if(!rows) return;
-                globalFeedbackRows = rows;
-                displayFeedbackRows(rows);
-            }).catch(err => console.error(err));
+                if (!data.feedbacks || data.feedbacks.length === 0) {
+                    container.innerHTML = "<p style='font-size:13px; color:#64748b;'>Abhi tak koi feedback nahi aaya hai.</p>";
+                    return;
+                }
+
+                let html = `<table class="feedback-table">
+                    <thead>
+                        <tr>
+                            <th style="width:30px;"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
+                            <th>Naam</th>
+                            <th>Sujhav (Message)</th>
+                            <th>Samay</th>
+                            <th style="width:70px; text-align:center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+                data.feedbacks.forEach(f => {
+                    let formattedDate = f.timestamp ? new Date(f.timestamp).toLocaleString() : "";
+                    html += `<tr>
+                        <td><input type="checkbox" class="feedback-checkbox" value="${f.rowIndex}"></td>
+                        <td>${f.name}</td>
+                        <td>${f.message}</td>
+                        <td><small>${formattedDate}</small></td>
+                        <td style="text-align:center;">
+                            <button class="btn-danger" onclick="deleteSingleFeedback(${f.rowIndex})">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+            })
+            .catch(() => {
+                container.innerHTML = "<p style='font-size:13px; color:#dc2626;'>Feedback load karne me samasya aayi.</p>";
+            });
+        }
+
+        function toggleSelectAll(source) {
+            checkboxes = document.querySelectorAll('.feedback-checkbox');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+        }
+
+        function deleteSingleFeedback(rowIndex) {
+            if (!confirm("Kya aap is feedback ko delete karna chahte hain?")) return;
+            sendDeleteRequest([rowIndex]);
+        }
+
+        function deleteSelectedFeedbacks() {
+            const selected = document.querySelectorAll('.feedback-checkbox:checked');
+            if (selected.length === 0) {
+                alert("Kripya delete karne ke liye kam se kam ek feedback select karein.");
+                return;
+            }
+            if (!confirm(`Kya aap ${selected.length} selected feedbacks ko delete karna chahte hain?`)) return;
+
+            const rows = Array.from(selected).map(cb => Number(cb.value));
+            sendDeleteRequest(rows);
+        }
+
+        function sendDeleteRequest(rows) {
+            fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "deleteFeedback", rows: rows })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.status === "success") {
+                    alert("Feedback delete kar diya gaya hai!");
+                    loadFeedbackList();
+                } else {
+                    alert("Delete karne me error aayi.");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Server error.");
+            });
+        }
+
+        function getDriveFileId(url) {
+            const value = String(url || "");
+            const match = value.match(/(?:\/d\/|id=|[?&]fileId=)([a-zA-Z0-9_-]+)/);
+            return match ? match[1] : "";
+        }
+
+        function getMediaUrl(url, type) {
+            const fileId = getDriveFileId(url);
+            if (!fileId) return url;
+            return type.toLowerCase() === "video"
+                ? `https://drive.google.com/file/d/${fileId}/preview`
+                : `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
+        }
+
+        function escapeGalleryHtml(value) {
+            return String(value ?? "").replace(/[&<>"']/g, character => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+            }[character]));
+        }
+
+        function isGalleryUrl(value) {
+            return /^https?:\/\//i.test(String(value || ""));
+        }
+
+        function normalizeMediaRecord(media) {
+            const titleValue = media.title || media.Title || media.Name || "";
+            const fileValue = media.fileUrl || media.url || media.URL || media.Link || "";
+            const typeValue = media.type || media.Type || media.mediaType || "";
+            const urlInType = isGalleryUrl(typeValue);
+            const urlInFile = isGalleryUrl(fileValue);
+            if (urlInType && !urlInFile) {
+                return { title: fileValue || "Event media", type: titleValue || "Photo", fileUrl: typeValue };
+            }
+            return { title: titleValue || "Event media", type: typeValue || "Photo", fileUrl: fileValue };
+        }
+
+        function loadGalleryMedia() {
+            fetch(API_URL + "?action=getMedia")
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "error" && data.message === "Invalid GET action") {
+                    return fetch(API_URL + "?action=getData")
+                        .then(res => res.json())
+                        .then(fallbackData => ({
+                            media: fallbackData.media || fallbackData.Media || fallbackData.Gallery || []
+                        }));
+                }
+                return data;
+            })
+            .then(data => {
+                let container = document.getElementById("galleryContainer");
+                if (!container) return;
+                let mediaList = data.media || data.Media || data.Gallery || [];
+                if(!mediaList || mediaList.length === 0) {
+                    container.innerHTML = "<p style='text-align:center; color:#64748b; grid-column:1/-1; padding:20px;'>Abhi tak koi photo ya video upload nahi ki gayi hai.</p>";
+                    return;
+                }
+                container.innerHTML = "";
+                mediaList.forEach(m => {
+                    const normalizedMedia = normalizeMediaRecord(m);
+                    const mediaType = String(normalizedMedia.type).toLowerCase();
+                    const driveUrl = String(normalizedMedia.fileUrl || "");
+                    const safeDriveUrl = isGalleryUrl(driveUrl) ? driveUrl : "#";
+                    const mediaUrl = getMediaUrl(driveUrl, mediaType);
+                    const safeMediaUrl = isGalleryUrl(mediaUrl) ? mediaUrl : "#";
+                    const fileId = getDriveFileId(driveUrl);
+                    const directDownloadUrl = fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : driveUrl;
+                    const mediaTitle = escapeGalleryHtml(normalizedMedia.title);
+
+                    let mediaTag = "";
+                    if (mediaType === "video") {
+                        mediaTag = `<iframe src="${escapeGalleryHtml(safeMediaUrl)}" title="${mediaTitle}" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+                    } else {
+                        mediaTag = `<a class="media-open" href="${escapeGalleryHtml(safeDriveUrl)}" target="_blank" rel="noopener"><img src="${escapeGalleryHtml(safeMediaUrl)}" alt="${mediaTitle}" onerror="this.onerror=null;this.src='https://via.placeholder.com/200x160?text=Image+Not+Found';"></a>`;
+                    }
+                    
+                    const itemClass = mediaType === "video" ? "gallery-item video-item" : "gallery-item";
+                    container.innerHTML += `<div class="${itemClass}">
+                        ${mediaTag}
+                        <p style="font-size:12px; margin-top:8px; font-weight:600;">${mediaTitle}</p>
+                        <a href="${escapeGalleryHtml(safeDriveUrl)}" target="_blank" rel="noopener" style="display:block; margin-top:8px; color:#4f46e5; font-size:11px; font-weight:600;">Drive me kholen</a>
+                        <a href="${escapeGalleryHtml(directDownloadUrl)}" target="_blank" rel="noopener" style="display:block; margin-top:8px; background:#059669; color:white; padding:6px; border-radius:6px; text-decoration:none; font-size:11px; font-weight:600; text-align:center;">📥 Download Karein</a>
+                    </div>`;
+                });
+            }).catch(() => {
+                document.getElementById("galleryContainer").innerHTML = "<p>Media load karne me samasya aayi.</p>";
+            });
         }
     </script>
 </body>

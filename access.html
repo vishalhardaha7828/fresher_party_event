@@ -76,7 +76,7 @@
                 <!-- Admin Login -->
                 <div id="adminLoginBox">
                     <div class="form-group">Admin ID / PIN:</div>
-                    <input type="password" id="adminPin" placeholder="Enter Admin PIN (e.g. 1234)" maxlength="6">
+                    <input type="password" id="adminPin" placeholder="Enter Admin PIN (e.g. *********)" maxlength="8">
                 </div>
 
                 <!-- Volunteer Login -->
@@ -221,7 +221,7 @@
             let role = document.getElementById("loginRole").value;
             if(role === "admin") {
                 let pin = document.getElementById("adminPin").value.trim();
-                if(pin === "1234") { // Fixed Admin PIN
+                if(pin === "a1d2m3i4n") { // Fixed Admin PIN
                     localStorage.setItem("userRole", "Admin");
                     localStorage.setItem("isAdmin", "true");
                     alert("Admin Login Successful!");

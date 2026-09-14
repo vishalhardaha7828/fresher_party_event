@@ -3,71 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="theme-color" content="#7c3aed">
     <title>Access Control - Event Manager</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background: #f4f6f9; color: #333; }
-        nav { background: #4f46e5; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: relative; }
-        nav .nav-brand { font-size: 18px; font-weight: bold; }
-        .menu-btn { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
-        nav ul { list-style: none; display: flex; gap: 12px; margin: 0; padding: 0; }
-        nav ul li a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; }
-        @media (max-width: 768px) {
-            .menu-btn { display: block; }
-            nav ul { display: none; flex-direction: column; width: 100%; position: absolute; top: 100%; left: 0; background: #4338ca; padding: 15px 20px; z-index: 1000; gap: 12px; }
-            nav ul.active { display: flex; }
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        /* ---- Festive Violet & Amber theme tokens ---- */
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand:  { 50:"#f5f3ff", 100:"#ede9fe", 200:"#ddd6fe", 300:"#c4b5fd", 400:"#a78bfa", 500:"#8b5cf6", 600:"#7c3aed", 700:"#6d28d9", 800:"#5b21b6", 900:"#4c1d95", DEFAULT:"#7c3aed" },
+                        accent: { 400:"#e879f9", 500:"#d946ef", 600:"#c026d3", DEFAULT:"#d946ef" },
+                        gold:   { 300:"#fcd34d", 400:"#fbbf24", 500:"#f59e0b", DEFAULT:"#fbbf24" },
+                        ink:    { 400:"#8b849f", 500:"#6b6485", 700:"#3f3a56", 900:"#1e1b2e" },
+                        canvas: "#faf7ff"
+                    },
+                    fontFamily: {
+                        sans:    ["Inter", '"Segoe UI"', "system-ui", "sans-serif"],
+                        display: ['"Plus Jakarta Sans"', '"Segoe UI"', "system-ui", "sans-serif"]
+                    },
+                    boxShadow: {
+                        soft: "0 1px 2px rgba(76,29,149,.04), 0 8px 24px -8px rgba(76,29,149,.14)",
+                        lift: "0 8px 16px -4px rgba(76,29,149,.12), 0 24px 48px -12px rgba(76,29,149,.24)",
+                        glow: "0 8px 20px -6px rgba(124,58,237,.45)"
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer components {
+            /* ---- Shell ---- */
+            .topbar    { @apply sticky top-0 z-40 bg-gradient-to-r from-brand-700 via-brand-600 to-accent-600 text-white shadow-lg shadow-brand-900/20; }
+            .brandmark { @apply font-display text-lg font-extrabold tracking-tight; }
+
+            /* ---- Navigation ---- */
+            .nav-links         { @apply absolute left-0 top-full z-50 hidden w-full flex-col gap-1 border-t border-white/15 bg-brand-700 p-3 shadow-xl md:static md:flex md:w-auto md:flex-row md:items-center md:gap-1 md:border-0 md:bg-transparent md:p-0 md:shadow-none; }
+            .nav-links.is-open { @apply flex; }
+            .nav-link          { @apply block rounded-lg px-3 py-2 text-[13px] font-semibold text-white/85 transition hover:bg-white/15 hover:text-white; }
+            .nav-link-active   { @apply bg-white/20 text-white; }
+
+            /* ---- Cards ---- */
+            .card               { @apply mb-5 rounded-2xl border border-brand-100 bg-white p-6 shadow-soft; }
+            .card-title         { @apply mb-4 flex items-center gap-2.5 font-display text-base font-bold text-ink-900; }
+            .card-title::before { content: ""; @apply block h-5 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-brand-500 to-accent-500; }
+            .muted              { @apply text-[13px] text-ink-500; }
+
+            /* ---- Forms ---- */
+            .field-label { @apply mb-1.5 mt-4 block text-left text-[13px] font-semibold text-ink-700; }
+            .input       { @apply w-full rounded-xl border border-brand-100 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm outline-none transition placeholder:text-ink-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/15; }
+
+            /* ---- Buttons ---- */
+            .btn         { @apply mt-5 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-accent-600 px-4 py-2.5 text-sm font-bold text-white shadow-glow transition hover:brightness-110 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none; }
+            .btn-sm      { @apply mt-0 w-auto rounded-lg px-3 py-1.5 text-xs; }
+            .btn-danger  { @apply bg-gradient-to-r from-rose-500 to-red-600 shadow-none; }
+            .btn-warning { @apply bg-gradient-to-r from-amber-500 to-orange-500 shadow-none; }
+            .btn-success { @apply bg-gradient-to-r from-emerald-500 to-teal-600 shadow-none; }
+
+            /* ---- Tabs ---- */
+            .tab           { @apply mt-0 flex-1 cursor-pointer rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-[13px] font-bold text-ink-500 transition hover:border-brand-300 hover:text-brand-700; }
+            .tab.is-active { @apply border-transparent bg-gradient-to-r from-brand-600 to-accent-600 text-white shadow-glow; }
+
+            /* ---- Volunteer cards ---- */
+            .volunteer-card { @apply overflow-hidden rounded-2xl border border-brand-100 bg-white text-left shadow-soft transition hover:-translate-y-1 hover:shadow-lift; }
+            .volunteer-id   { @apply inline-block rounded-full bg-brand-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-700 ring-1 ring-brand-200; }
         }
-        .container { max-width: 500px; margin: 30px auto; padding: 0 15px; }
-        .box { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; margin-bottom: 20px; }
-        h2 { color: #4f46e5; font-size: 18px; margin-bottom: 12px; }
-        input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; margin-bottom: 15px; }
-        button { background: #4f46e5; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; font-size: 14px; }
-        .btn-danger { background: #ef4444; margin-top: 10px; }
-        .status-badge { display: inline-block; padding: 5px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
-        .form-group { text-align: left; margin-bottom: 5px; font-size: 13px; font-weight: 600; color: #475569; }
-        .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-buttons button { background: #e2e8f0; color: #475569; }
-        .tab-buttons button.active { background: #4f46e5; color: white; }
-        .volunteer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
-        .volunteer-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; text-align: left; }
-        .volunteer-card h3 { color: #3730a3; font-size: 16px; margin-bottom: 8px; }
-        .volunteer-card p { color: #475569; font-size: 13px; margin: 5px 0; }
-        .volunteer-id { display: inline-block; background: #e0e7ff; color: #3730a3; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-bottom: 8px; }
-        .volunteer-actions { display: flex; gap: 8px; margin-top: 12px; }
-        .volunteer-actions button { padding: 7px; font-size: 12px; }
-        .volunteer-actions .edit { background: #d97706; }
-        .volunteer-actions .delete { background: #dc2626; }
     </style>
 </head>
-<body>
-    <nav>
-        <div class="nav-brand">🎓 College Event Manager</div>
-        <button class="menu-btn" onclick="toggleMenu()">☰</button>
-        <ul id="navLinks">
-            <li><a href="index.html">Dashboard</a></li>
-            <li><a href="collection-entry.html">Collection</a></li>
-            <li><a href="expenses.html">Expenses</a></li>
-            <li><a href="tasks.html">Tasks & Programs</a></li>
-            <li><a href="participants.html">Participants</a></li>
-            <li><a href="access.html" style="font-weight:bold;">Access Control</a></li>
-        </ul>
+<body class="bg-canvas font-sans text-ink-900">
+
+    <nav class="topbar">
+        <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
+            <div class="brandmark">🎓 College Event Manager</div>
+            <button type="button" data-menu-toggle class="cursor-pointer rounded-lg p-1 text-2xl leading-none transition hover:bg-white/15 md:hidden" aria-label="Menu">☰</button>
+            <ul id="navLinks" class="nav-links">
+                <li><a href="index.html" class="nav-link">Dashboard</a></li>
+                <li><a href="collection-entry.html" class="nav-link">Collection</a></li>
+                <li><a href="expenses.html" class="nav-link">Expenses</a></li>
+                <li><a href="tasks.html" class="nav-link">Tasks &amp; Programs</a></li>
+                <li><a href="participants.html" class="nav-link">Participants</a></li>
+                <li><a href="access.html" class="nav-link nav-link-active">Access Control</a></li>
+            </ul>
+        </div>
     </nav>
-    <div class="container">
-        <div class="box">
-            <h2>🔐 Access & Authentication</h2>
-            <div id="roleBadge" class="status-badge" style="background:#f1f5f9; color:#475569;">Mode: Normal User / Student</div>
-            
+
+    <div class="mx-auto max-w-2xl px-4 py-8">
+
+        <div class="card text-center">
+            <div class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-600 to-accent-600 text-2xl shadow-glow">🔐</div>
+            <h2 class="font-display text-xl font-extrabold text-ink-900">Access &amp; Authentication</h2>
+            <p class="muted mt-1">Apna role chunkar login karein</p>
+
+            <div id="roleBadge" class="mt-4 inline-block rounded-full bg-brand-50 px-3.5 py-1.5 text-xs font-bold text-ink-500 ring-1 ring-brand-200">Mode: Normal User / Student</div>
+
             <!-- Tabs for Login / Register / Participant Status -->
-            <div id="authTabs" class="tab-buttons">
-                <button id="tabLoginBtn" class="active" onclick="switchTab('login')">Login</button>
-                <button id="tabRegBtn" onclick="switchTab('register')">Volunteer Register</button>
-                <button id="tabStatusBtn" onclick="switchTab('status')">Participant Status</button>
+            <div id="authTabs" class="mt-5 flex flex-col gap-2 sm:flex-row">
+                <button type="button" id="tabLoginBtn" class="tab is-active" data-tab="login">Admin Login</button>
+                <button type="button" id="tabRegBtn" class="tab" data-tab="register">Volunteer Register</button>
+                <button type="button" id="tabStatusBtn" class="tab" data-tab="status">Participant Status</button>
             </div>
 
             <!-- LOGIN SECTION -->
             <div id="loginSection">
-                <div class="form-group">Login Role:</div>
-                <select id="loginRole" onchange="handleLoginRoleChange()">
+                <label class="field-label" for="loginRole">Login Role:</label>
+                <select id="loginRole" class="input">
                     <option value="admin">Admin (Fix ID)</option>
                     <option value="volunteer">Branch Volunteer</option>
                     <option value="participant">Participant</option>
@@ -75,481 +121,580 @@
 
                 <!-- Admin Login -->
                 <div id="adminLoginBox">
-                    <div class="form-group">Admin ID / PIN:</div>
-                    <input type="password" id="adminPin" placeholder="Enter Admin PIN (e.g. *********)" maxlength="9">
+                    <label class="field-label" for="adminPin">Admin ID / PIN:</label>
+                    <input type="password" id="adminPin" class="input" maxlength="64" autocomplete="current-password" placeholder="Enter Admin PIN">
                 </div>
 
                 <!-- Volunteer Login -->
-                <div id="volunteerLoginBox" style="display:none;">
-                    <div class="form-group">Phone Number:</div>
-                    <input type="tel" id="volLoginPhone" placeholder="10-digit mobile number" maxlength="10">
-                    <div class="form-group">Password:</div>
-                    <input type="password" id="volLoginPassword" placeholder="Your password">
+                <div id="volunteerLoginBox" class="hidden">
+                    <label class="field-label" for="volLoginPhone">Phone Number:</label>
+                    <input type="tel" id="volLoginPhone" class="input" maxlength="10" autocomplete="username" placeholder="10-digit mobile number">
+                    <label class="field-label" for="volLoginPassword">Password:</label>
+                    <input type="password" id="volLoginPassword" class="input" autocomplete="current-password" placeholder="Your password">
                 </div>
 
                 <!-- Participant Login -->
-                <div id="participantLoginBox" style="display:none;">
-                    <div class="form-group">Registered Phone Number:</div>
-                    <input type="tel" id="partLoginPhone" placeholder="10-digit mobile number" maxlength="10">
+                <div id="participantLoginBox" class="hidden">
+                    <label class="field-label" for="partLoginPhone">Registered Phone Number:</label>
+                    <input type="tel" id="partLoginPhone" class="input" maxlength="10" placeholder="10-digit mobile number">
                 </div>
 
-                <button onclick="loginUser()">Login</button>
+                <button type="button" id="loginBtn" class="btn">Login →</button>
             </div>
 
             <!-- VOLUNTEER REGISTRATION SECTION -->
-            <div id="registerSection" style="display:none;">
-                <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Apni branch ke liye Volunteer banne ke liye form bharein. Admin approval ke baad aap login kar sakenge.</p>
-                <div class="form-group">Poora Naam:</div>
-                <input type="text" id="regName" placeholder="Aapka naam">
-                <div class="form-group">Branch Chunein:</div>
-                <select id="regBranch">
+            <div id="registerSection" class="hidden">
+                <p class="muted mt-4 rounded-xl bg-brand-50 p-3 text-left">Apni branch ke liye Volunteer banne ke liye form bharein. Admin approval ke baad aap login kar sakenge.</p>
+                <label class="field-label" for="regName">Poora Naam:</label>
+                <input type="text" id="regName" class="input" maxlength="120" placeholder="Aapka naam">
+                <label class="field-label" for="regBranch">Branch Chunein:</label>
+                <select id="regBranch" class="input">
                     <option value="ME">ME</option>
                     <option value="CS">CS</option>
                     <option value="AE">AE</option>
                     <option value="Civil">Civil</option>
                 </select>
-                <div class="form-group">Semester:</div>
-                <select id="regSemester">
+                <label class="field-label" for="regSemester">Semester:</label>
+                <select id="regSemester" class="input">
                     <option value="3rd">3rd</option>
                     <option value="5th">5th</option>
                 </select>
-                <div class="form-group">Phone Number:</div>
-                <input type="tel" id="regPhone" placeholder="10-digit mobile number" maxlength="10">
-                <div class="form-group">Create Password:</div>
-                <input type="password" id="regPassword" placeholder="New password">
-                <button onclick="submitVolunteerRegistration()">Submit Application</button>
+                <label class="field-label" for="regPhone">Phone Number:</label>
+                <input type="tel" id="regPhone" class="input" maxlength="10" placeholder="10-digit mobile number">
+                <label class="field-label" for="regPassword">Create Password:</label>
+                <input type="password" id="regPassword" class="input" autocomplete="new-password" placeholder="Kam se kam 6 characters">
+                <button type="button" id="registerBtn" class="btn">Submit Application</button>
             </div>
 
             <!-- PARTICIPANT STATUS SECTION -->
-            <div id="statusSection" style="display:none;">
-                <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Apna registration status check karne ke liye phone number daalein.</p>
-                <div class="form-group">Phone Number:</div>
-                <input type="tel" id="checkPhone" placeholder="10-digit mobile number" maxlength="10">
-                <button onclick="checkParticipantStatus()">Check Status</button>
-                <div id="statusResult" style="margin-top:15px; font-weight:bold; font-size:13px;"></div>
+            <div id="statusSection" class="hidden">
+                <p class="muted mt-4 rounded-xl bg-brand-50 p-3 text-left">Apna registration status check karne ke liye phone number daalein.</p>
+                <label class="field-label" for="checkPhone">Phone Number:</label>
+                <input type="tel" id="checkPhone" class="input" maxlength="10" placeholder="10-digit mobile number">
+                <button type="button" id="checkStatusBtn" class="btn">Check Status</button>
+                <div id="statusResult" class="mt-4 text-[13px] font-bold"></div>
             </div>
 
             <!-- LOGOUT SECTION -->
-            <div id="logoutSection" style="display:none;">
-                <p id="logoutMsg" style="font-size:13px; color:#166534; margin-bottom:15px;"></p>
-                <button class="btn-danger" onclick="logoutUser()">Logout</button>
+            <div id="logoutSection" class="hidden">
+                <p id="logoutMsg" class="mt-4 rounded-xl bg-emerald-50 p-3 text-[13px] font-semibold text-emerald-700 ring-1 ring-emerald-200"></p>
+                <button type="button" id="logoutBtn" class="btn btn-danger">Logout</button>
             </div>
         </div>
 
-        <div class="box" id="volunteerDirectorySection" style="display:none;">
-            <h2>👥 Approved Volunteers</h2>
-            <div id="approvedVolunteersList" class="volunteer-grid">
-                <p style="font-size:13px; color:#64748b;">Volunteers load ho rahe hain...</p>
+        <div class="card hidden" id="volunteerDirectorySection">
+            <h2 class="card-title">👥 Approved Volunteers</h2>
+            <div id="approvedVolunteersList" class="grid grid-cols-[repeat(auto-fit,minmax(235px,1fr))] gap-3">
+                <p class="muted">Volunteers load ho rahe hain...</p>
             </div>
         </div>
 
         <!-- ADMIN APPROVALS & MEETING MANAGEMENT (Only for Admin) -->
-        <div class="box" id="adminApprovalSection" style="display:none;">
-            <h2>👥 Volunteer Applications Approval</h2>
-            <div id="pendingVolunteersList" class="volunteer-grid">
-                <p style="font-size:13px; color:#64748b;">Loading applications...</p>
+        <div class="card hidden" id="adminApprovalSection">
+            <h2 class="card-title">📥 Volunteer Applications Approval</h2>
+            <div id="pendingVolunteersList" class="grid grid-cols-[repeat(auto-fit,minmax(235px,1fr))] gap-3">
+                <p class="muted">Loading applications...</p>
             </div>
         </div>
 
-        <div class="box" id="meetingSection" style="display:none;">
-            <h2>📝 Meeting Updates (Admin Only)</h2>
-            <div class="form-group">Meeting ki Date:</div>
-            <input type="date" id="meetingDate">
-            <div class="form-group">Meeting ka Nirnay (Decision):</div>
-            <textarea id="meetingDecision" rows="3" placeholder="Decision yahan likhein..."></textarea>
-            <div class="form-group">Agli Meeting ki Date:</div>
-            <input type="date" id="nextMeetingDate">
-            <button onclick="saveMeetingDetails()">Save Meeting Details</button>
+        <div class="card hidden" id="meetingSection">
+            <h2 class="card-title">📝 Meeting Updates (Admin Only)</h2>
+            <label class="field-label" for="meetingDate">Meeting ki Date:</label>
+            <input type="date" id="meetingDate" class="input">
+            <label class="field-label" for="meetingDecision">Meeting ka Nirnay (Decision):</label>
+            <textarea id="meetingDecision" rows="3" maxlength="2000" class="input resize-y" placeholder="Decision yahan likhein..."></textarea>
+            <label class="field-label" for="nextMeetingDate">Agli Meeting ki Date:</label>
+            <input type="date" id="nextMeetingDate" class="input">
+            <button type="button" id="saveMeetingBtn" class="btn">Save Meeting Details</button>
         </div>
-        
+
         <!-- ADMIN MEDIA UPLOAD SECTION -->
-        <div class="box" id="adminMediaBox" style="display:none;">
-            <h2>📸 Upload Photos & Videos (Admin)</h2>
-            <div class="form-group">Media Type:</div>
-            <select id="mediaType">
+        <div class="card hidden" id="adminMediaBox">
+            <h2 class="card-title">📸 Upload Photos &amp; Videos (Admin)</h2>
+            <label class="field-label" for="mediaType">Media Type:</label>
+            <select id="mediaType" class="input">
                 <option value="Photo">Photo</option>
                 <option value="Video">Video</option>
             </select>
-            <div class="form-group">Media Title / Description:</div>
-            <input type="text" id="mediaTitle" placeholder="Jaise: Cultural Night Dance">
-            <div class="form-group">Media File / Link:</div>
-            <input type="file" id="mediaFile" accept="image/*,video/*">
-            <button onclick="uploadAdminMedia()">Upload Media</button>
+            <label class="field-label" for="mediaTitle">Media Title / Description:</label>
+            <input type="text" id="mediaTitle" class="input" maxlength="200" placeholder="Jaise: Cultural Night Dance">
+            <label class="field-label" for="mediaFile">Media File / Link:</label>
+            <input type="file" id="mediaFile" class="input" accept="image/*,video/*">
+            <p class="muted mt-2 rounded-lg bg-amber-50 p-2.5 ring-1 ring-amber-200">⚠️ Maximum 5 MB. Upload ki gayi file link se kisi ko bhi dikh sakti hai.</p>
+            <button type="button" id="uploadMediaBtn" class="btn">Upload Media</button>
         </div>
     </div>
-    <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbynen3fhejkRkM6x1lZV1ele__6PPURLFp1Z1qz1U7VfORsY3cySGkMOPi4LpJfkZf8/exec";
-        const APPROVED_VOLUNTEERS_CACHE_KEY = "approvedVolunteersCache";
-        
-        function toggleMenu() { document.getElementById("navLinks").classList.toggle("active"); }
 
-        window.onload = function() { 
-            updateUI(); 
-            let dateField = document.getElementById("meetingDate");
-            if(dateField) dateField.valueAsDate = new Date();
-        }
+<script>
+/* =========================================================================
+   CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
+   ========================================================================= */
+const API_URL = "https://script.google.com/macros/s/AKfycbyNBHtt7SsOhtHEphfazBxScg-nEr9yG89RnT4bfbagNbWGs6H9E1fRR-Q54J1JTEGe/exec";
 
-        function switchTab(tab) {
-            document.getElementById("tabLoginBtn").classList.remove("active");
-            document.getElementById("tabRegBtn").classList.remove("active");
-            document.getElementById("tabStatusBtn").classList.remove("active");
-            
-            document.getElementById("loginSection").style.display = "none";
-            document.getElementById("registerSection").style.display = "none";
-            document.getElementById("statusSection").style.display = "none";
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
-            if(tab === 'login') {
-                document.getElementById("tabLoginBtn").classList.add("active");
-                document.getElementById("loginSection").style.display = "block";
-            } else if(tab === 'register') {
-                document.getElementById("tabRegBtn").classList.add("active");
-                document.getElementById("registerSection").style.display = "block";
-            } else if(tab === 'status') {
-                document.getElementById("tabStatusBtn").classList.add("active");
-                document.getElementById("statusSection").style.display = "block";
-            }
-        }
+/* =========================================================================
+   SESSION
+   Admin PIN ab HTML me kahin nahi hai — wo Apps Script ki Script Properties
+   me rehta hai. Login par server ek token deta hai aur har privileged action
+   par wahi token verify hota hai. Yahan store kiya gaya role sirf UI dikhane
+   ke liye hai; ise badalne se koi extra access nahi milta.
+   ========================================================================= */
+const STORE_PREFIX = "em.";
 
-        function handleLoginRoleChange() {
-            let role = document.getElementById("loginRole").value;
-            document.getElementById("adminLoginBox").style.display = role === "admin" ? "block" : "none";
-            document.getElementById("volunteerLoginBox").style.display = role === "volunteer" ? "block" : "none";
-            document.getElementById("participantLoginBox").style.display = role === "participant" ? "block" : "none";
-        }
+const auth = {
+    token:    () => localStorage.getItem(STORE_PREFIX + "token") || "",
+    role:     () => localStorage.getItem(STORE_PREFIX + "role") || "",
+    branch:   () => localStorage.getItem(STORE_PREFIX + "branch") || "",
+    semester: () => localStorage.getItem(STORE_PREFIX + "semester") || "",
+    isAdmin:  () => auth.role() === "Admin",
 
-        function loginUser() {
-            let role = document.getElementById("loginRole").value;
-            if(role === "admin") {
-                let pin = document.getElementById("adminPin").value.trim();
-                if(pin === "a1d2m3i4n") { // Fixed Admin PIN
-                    localStorage.setItem("userRole", "Admin");
-                    localStorage.setItem("isAdmin", "true");
-                    alert("Admin Login Successful!");
-                    updateUI();
-                } else {
-                    alert("Galat Admin PIN!");
-                }
-            } else if(role === "volunteer") {
-                let phone = document.getElementById("volLoginPhone").value.trim();
-                let pass = document.getElementById("volLoginPassword").value.trim();
-                fetch(API_URL + `?action=verifyVolunteer&phone=${encodeURIComponent(phone)}&pass=${encodeURIComponent(pass)}`)
-                .then(res => {
-                    if (!res.ok) throw new Error(`API error: ${res.status}`);
-                    return res.json();
-                })
-                .then(data => {
-                    if(data.status === "success") {
-                        localStorage.setItem("userRole", "Volunteer");
-                        localStorage.setItem("volunteerBranch", data.branch);
-                        localStorage.setItem("volunteerSemester", data.semester);
-                        alert("Volunteer Login Successful!");
-                        updateUI();
-                    } else {
-                        alert("Invalid credentials or approval pending!");
-                    }
-                }).catch(() => {
-                    if(phone === "9999999999" && pass === "1234") {
-                        localStorage.setItem("userRole", "Volunteer");
-                        localStorage.setItem("volunteerBranch", "CS");
-                        localStorage.setItem("volunteerSemester", "3rd");
-                        alert("Volunteer Login Successful!");
-                        updateUI();
-                    } else {
-                        alert("Login failed. Check server connection.");
-                    }
-                });
-            } else if(role === "participant") {
-                let phone = document.getElementById("partLoginPhone").value.trim();
-                localStorage.setItem("userRole", "Participant");
-                localStorage.setItem("participantPhone", phone);
-                alert("Participant Logged In!");
-                updateUI();
-            }
-        }
+    save(session) {
+        localStorage.setItem(STORE_PREFIX + "token", session.token || "");
+        localStorage.setItem(STORE_PREFIX + "role", session.role || "");
+        localStorage.setItem(STORE_PREFIX + "branch", session.branch || "");
+        localStorage.setItem(STORE_PREFIX + "semester", session.semester || "");
+        localStorage.setItem(STORE_PREFIX + "phone", session.phone || "");
+    },
 
-        function logoutUser() {
-            localStorage.clear();
-            alert("Logged out successfully.");
-            updateUI();
-        }
+    /** Sirf is portal ki keys hatata hai — baaki site data ko haath nahi lagata. */
+    clear() {
+        Object.keys(localStorage)
+            .filter(key => key.startsWith(STORE_PREFIX))
+            .forEach(key => localStorage.removeItem(key));
+    }
+};
 
-        function updateUI() {
-            let role = localStorage.getItem("userRole");
-            let badge = document.getElementById("roleBadge");
-            let logoutMsg = document.getElementById("logoutMsg");
-            
-            if(role === "Admin") {
-                badge.style.background = "#dcfce7"; badge.style.color = "#166534";
-                badge.innerText = "Mode: Full Admin Access Active";
-                document.getElementById("loginSection").style.display = "none";
-                document.getElementById("registerSection").style.display = "none";
-                document.getElementById("statusSection").style.display = "none";
-                document.getElementById("authTabs").style.display = "none";
-                document.getElementById("logoutSection").style.display = "block";
-                document.getElementById("volunteerDirectorySection").style.display = "block";
-                document.getElementById("adminApprovalSection").style.display = "block";
-                document.getElementById("meetingSection").style.display = "block";
-                document.getElementById("adminMediaBox").style.display = "block";
-                loadApprovedVolunteers();
-                loadPendingVolunteers();
-            } else if(role === "Volunteer") {
-                badge.style.background = "#fef3c7"; badge.style.color = "#92400e";
-                badge.innerText = `Mode: Volunteer (${localStorage.getItem("volunteerBranch")})`;
-                document.getElementById("loginSection").style.display = "none";
-                document.getElementById("authTabs").style.display = "none";
-                document.getElementById("logoutSection").style.display = "block";
-                document.getElementById("volunteerDirectorySection").style.display = "none";
-            } else if(role === "Participant") {
-                badge.style.background = "#e0e7ff"; badge.style.color = "#3730a3";
-                badge.innerText = "Mode: Participant Status View";
-                document.getElementById("loginSection").style.display = "none";
-                document.getElementById("authTabs").style.display = "none";
-                document.getElementById("logoutSection").style.display = "block";
-                document.getElementById("volunteerDirectorySection").style.display = "none";
-            } else {
-                badge.style.background = "#f1f5f9"; badge.style.color = "#475569";
-                badge.innerText = "Mode: Normal Student / Viewer";
-                document.getElementById("loginSection").style.display = "block";
-                document.getElementById("authTabs").style.display = "flex";
-                document.getElementById("logoutSection").style.display = "none";
-                document.getElementById("volunteerDirectorySection").style.display = "none";
-                document.getElementById("adminApprovalSection").style.display = "none";
-                document.getElementById("meetingSection").style.display = "none";
-                document.getElementById("adminMediaBox").style.display = "none";
-            }
-        }
+/* =========================================================================
+   API
+   Content-Type header jaan-bujh kar set nahi kiya gaya — warna browser CORS
+   preflight bhejta hai jise Apps Script web app handle nahi karta.
+   ========================================================================= */
+async function apiGet(action, params = {}) {
+    const query = new URLSearchParams({ action, token: auth.token(), ...params });
+    const response = await fetch(`${API_URL}?${query}`);
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+    return response.json();
+}
 
-        function submitVolunteerRegistration() {
-            let payload = {
-                action: "registerVolunteer",
-                name: document.getElementById("regName").value,
-                branch: document.getElementById("regBranch").value,
-                semester: document.getElementById("regSemester").value,
-                phone: document.getElementById("regPhone").value,
-                password: document.getElementById("regPassword").value
-            };
-            if(!payload.name || !payload.phone || !payload.password) {
-                alert("Sabhi fields bharein!");
-                return;
-            }
-            fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
-            .then(res => {
-                if (!res.ok) throw new Error(`API error: ${res.status}`);
-                return res.json();
-            })
-            .then(data => {
-                if (data.status && data.status !== "success") throw new Error(data.message || "Registration rejected");
-                alert("Volunteer application submitted successfully! Admin approval ke baad login kar sakenge.");
-                switchTab('login');
-            }).catch(error => {
-                console.error("Volunteer registration error:", error);
-                alert("Volunteer registration nahi ho saki. Apps Script me registerVolunteer action check karein.");
+async function apiPost(action, payload = {}) {
+    const response = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ action, token: auth.token(), ...payload })
+    });
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+    const result = await response.json();
+    if (result.status && result.status !== "success") throw new Error(result.message || "Request rejected");
+    return result;
+}
+
+/* =========================================================================
+   OUTPUT SAFETY
+   ========================================================================= */
+const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => HTML_ENTITIES[character]);
+}
+
+const $ = id => document.getElementById(id);
+
+/* =========================================================================
+   PAGE SETUP
+   ========================================================================= */
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelector("[data-menu-toggle]").addEventListener("click", () => {
+        $("navLinks").classList.toggle("is-open");
+    });
+
+    document.querySelectorAll("[data-tab]").forEach(button => {
+        button.addEventListener("click", () => switchTab(button.dataset.tab));
+    });
+
+    $("loginRole").addEventListener("change", handleLoginRoleChange);
+    $("loginBtn").addEventListener("click", loginUser);
+    $("logoutBtn").addEventListener("click", logoutUser);
+    $("registerBtn").addEventListener("click", submitVolunteerRegistration);
+    $("checkStatusBtn").addEventListener("click", checkParticipantStatus);
+    $("saveMeetingBtn").addEventListener("click", saveMeetingDetails);
+    $("uploadMediaBtn").addEventListener("click", uploadAdminMedia);
+
+    $("meetingDate").valueAsDate = new Date();
+    updateUI();
+});
+
+function switchTab(tab) {
+    const tabs = { login: "tabLoginBtn", register: "tabRegBtn", status: "tabStatusBtn" };
+    const sections = { login: "loginSection", register: "registerSection", status: "statusSection" };
+
+    Object.values(tabs).forEach(id => $(id).classList.remove("is-active"));
+    Object.values(sections).forEach(id => $(id).classList.add("hidden"));
+
+    $(tabs[tab]).classList.add("is-active");
+    $(sections[tab]).classList.remove("hidden");
+}
+
+function handleLoginRoleChange() {
+    const role = $("loginRole").value;
+    const boxes = { admin: "adminLoginBox", volunteer: "volunteerLoginBox", participant: "participantLoginBox" };
+    Object.entries(boxes).forEach(([key, id]) => {
+        $(id).classList.toggle("hidden", key !== role);
+    });
+}
+
+/* =========================================================================
+   LOGIN / LOGOUT
+   ========================================================================= */
+async function loginUser() {
+    const role = $("loginRole").value;
+    const button = $("loginBtn");
+    button.disabled = true;
+
+    try {
+        if (role === "admin") await loginAsAdmin();
+        else if (role === "volunteer") await loginAsVolunteer();
+        else loginAsParticipant();
+        updateUI();
+    } catch (error) {
+        console.error("Login error:", error);
+        alert(error.message || "Login nahi ho saka. Internet connection check karein.");
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function loginAsAdmin() {
+    const pin = $("adminPin").value.trim();
+    if (!pin) throw new Error("Admin PIN daalein!");
+    // PIN server par verify hota hai; yahan sirf token wapas aata hai.
+    const result = await apiPost("adminLogin", { pin });
+    auth.save({ token: result.token, role: "Admin" });
+    $("adminPin").value = "";
+    alert("Admin Login Successful!");
+}
+
+async function loginAsVolunteer() {
+    const phone = $("volLoginPhone").value.trim();
+    const password = $("volLoginPassword").value;
+    if (!phone || !password) throw new Error("Phone number aur password dono daalein!");
+    // POST use hota hai taki password kabhi URL ya browser history me na jaye.
+    const result = await apiPost("volunteerLogin", { phone, password });
+    auth.save({ token: result.token, role: "Volunteer", branch: result.branch, semester: result.semester, phone });
+    $("volLoginPassword").value = "";
+    alert("Volunteer Login Successful!");
+}
+
+function loginAsParticipant() {
+    const phone = $("partLoginPhone").value.trim();
+    // Participant view sirf read-only status ke liye hai, isme koi server permission nahi milti.
+    auth.save({ role: "Participant", phone });
+    alert("Participant Logged In!");
+}
+
+async function logoutUser() {
+    const token = auth.token();
+    auth.clear();
+    if (token) {
+        // Server par bhi session khatam karte hain, sirf browser se hatana kaafi nahi.
+        try { await apiPost("logout", { token }); } catch (error) { console.error("Logout error:", error); }
+    }
+    alert("Logged out successfully.");
+    updateUI();
+}
+
+/* =========================================================================
+   UI STATE
+   ========================================================================= */
+function updateUI() {
+    const role = auth.role();
+    const badge = $("roleBadge");
+    const isLoggedIn = Boolean(role);
+    const show = (id, visible) => $(id).classList.toggle("hidden", !visible);
+
+    show("authTabs", !isLoggedIn);
+    show("loginSection", !isLoggedIn);
+    show("registerSection", false);
+    show("statusSection", false);
+    show("logoutSection", isLoggedIn);
+    show("volunteerDirectorySection", role === "Admin");
+    show("adminApprovalSection", role === "Admin");
+    show("meetingSection", role === "Admin");
+    show("adminMediaBox", role === "Admin");
+
+    badge.className = "mt-4 inline-block rounded-full px-3.5 py-1.5 text-xs font-bold ring-1";
+    if (role === "Admin") {
+        badge.classList.add("bg-emerald-50", "text-emerald-700", "ring-emerald-200");
+        badge.innerText = "● Mode: Full Admin Access Active";
+        $("logoutMsg").innerText = "Aap Admin ke roop me logged in hain.";
+        loadApprovedVolunteers();
+        loadPendingVolunteers();
+    } else if (role === "Volunteer") {
+        badge.classList.add("bg-amber-50", "text-amber-800", "ring-amber-200");
+        badge.innerText = `● Mode: Volunteer (${auth.branch()})`;
+        $("logoutMsg").innerText = `Aap ${auth.branch()} - ${auth.semester()} volunteer ke roop me logged in hain.`;
+    } else if (role === "Participant") {
+        badge.classList.add("bg-brand-50", "text-brand-700", "ring-brand-200");
+        badge.innerText = "● Mode: Participant Status View";
+        $("logoutMsg").innerText = "Aap Participant ke roop me logged in hain.";
+    } else {
+        badge.classList.add("bg-brand-50", "text-ink-500", "ring-brand-200");
+        badge.innerText = "Mode: Normal Student / Viewer";
+        handleLoginRoleChange();
+    }
+}
+
+/* =========================================================================
+   VOLUNTEER REGISTRATION & MANAGEMENT
+   ========================================================================= */
+async function submitVolunteerRegistration() {
+    const payload = {
+        name: $("regName").value.trim(),
+        branch: $("regBranch").value,
+        semester: $("regSemester").value,
+        phone: $("regPhone").value.trim(),
+        password: $("regPassword").value
+    };
+    if (!payload.name || !payload.phone || !payload.password) {
+        alert("Sabhi fields bharein!");
+        return;
+    }
+    if (payload.password.length < 6) {
+        alert("Password kam se kam 6 characters ka hona chahiye.");
+        return;
+    }
+
+    const button = $("registerBtn");
+    button.disabled = true;
+    try {
+        await apiPost("registerVolunteer", payload);
+        $("regPassword").value = "";
+        alert("Volunteer application submitted successfully! Admin approval ke baad login kar sakenge.");
+        switchTab("login");
+    } catch (error) {
+        console.error("Volunteer registration error:", error);
+        alert(error.message || "Volunteer registration nahi ho saki.");
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function loadPendingVolunteers() {
+    const container = $("pendingVolunteersList");
+    try {
+        const data = await apiGet("getPendingVolunteers");
+        const volunteers = data.volunteers || [];
+        container.innerHTML = volunteers.length
+            ? volunteers.map(volunteer => volunteerCard(volunteer, "pending")).join("")
+            : `<p class="muted">Koi pending application nahi hai.</p>`;
+    } catch (error) {
+        console.error("Pending volunteer error:", error);
+        container.innerHTML = `<p class="text-[13px] font-semibold text-rose-600">Pending volunteers load nahi hue.</p>`;
+    }
+}
+
+async function loadApprovedVolunteers() {
+    const container = $("approvedVolunteersList");
+    try {
+        const data = await apiGet("getApprovedVolunteers");
+        const volunteers = data.volunteers || [];
+        container.innerHTML = volunteers.length
+            ? volunteers.map(volunteer => volunteerCard(volunteer, "approved")).join("")
+            : `<p class="muted">Abhi koi approved volunteer nahi hai.</p>`;
+    } catch (error) {
+        console.error("Approved volunteer error:", error);
+        container.innerHTML = `<p class="text-[13px] font-semibold text-rose-600">Volunteers load nahi ho sake.</p>`;
+    }
+}
+
+/**
+ * Volunteer card banata hai. Buttons me sirf phone number ek data attribute ke
+ * roop me jata hai — inline onclick nahi, taki sheet ka text kabhi code ki tarah
+ * run na ho sake.
+ */
+function volunteerCard(volunteer, listType) {
+    const phone = escapeHtml(volunteer.phone || "");
+    const initial = escapeHtml(String(volunteer.name || "?").trim().charAt(0).toUpperCase() || "?");
+    const isPending = listType === "pending";
+
+    const actions = isPending
+        ? `<button type="button" class="btn btn-sm btn-success flex-1" data-approve="${phone}">Approve</button>
+           <button type="button" class="btn btn-sm btn-warning flex-1" data-edit="${phone}">Edit</button>
+           <button type="button" class="btn btn-sm btn-danger flex-1" data-delete="${phone}">Delete</button>`
+        : `<button type="button" class="btn btn-sm btn-warning flex-1" data-edit="${phone}">Edit</button>
+           <button type="button" class="btn btn-sm btn-danger flex-1" data-delete="${phone}">Delete</button>`;
+
+    return `<article class="volunteer-card"
+                     data-name="${escapeHtml(volunteer.name || "")}"
+                     data-branch="${escapeHtml(volunteer.branch || "")}"
+                     data-semester="${escapeHtml(volunteer.semester || "")}">
+        <div class="h-1.5 ${isPending ? "bg-gradient-to-r from-amber-400 to-orange-500" : "bg-gradient-to-r from-brand-500 via-accent-500 to-gold-400"}"></div>
+        <div class="p-4">
+            <div class="flex items-center gap-3">
+                <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand-600 to-accent-600 font-display text-base font-bold text-white">${initial}</div>
+                <div class="min-w-0 flex-1">
+                    <h3 class="truncate font-display text-[15px] font-bold text-ink-900">${escapeHtml(volunteer.name || "Unnamed Volunteer")}</h3>
+                    <span class="volunteer-id mt-1">${isPending ? "⏳ Pending" : "✓ Approved"}</span>
+                </div>
+            </div>
+            <dl class="my-3 space-y-1 rounded-lg bg-brand-50 p-2.5 text-[13px]">
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">Branch</dt><dd class="font-bold text-ink-900">${escapeHtml(volunteer.branch || "-")}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">Semester</dt><dd class="font-bold text-ink-900">${escapeHtml(volunteer.semester || "-")}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">Phone</dt><dd class="font-bold text-ink-900">${escapeHtml(volunteer.phone || "-")}</dd></div>
+            </dl>
+            <div class="flex gap-2">${actions}</div>
+        </div>
+    </article>`;
+}
+
+// Approve / Edit / Delete buttons — event delegation se, inline onclick ke bina.
+document.addEventListener("click", event => {
+    const button = event.target.closest("[data-approve], [data-edit], [data-delete]");
+    if (!button) return;
+    const card = button.closest(".volunteer-card");
+
+    if (button.dataset.approve !== undefined) approveVolunteer(button.dataset.approve);
+    else if (button.dataset.edit !== undefined) editVolunteer(button.dataset.edit, card.dataset);
+    else deleteVolunteer(button.dataset.delete);
+});
+
+async function approveVolunteer(phone) {
+    try {
+        await apiPost("approveVolunteer", { phone });
+        alert("Volunteer Approved!");
+        refreshVolunteerLists();
+    } catch (error) {
+        console.error("Volunteer approval error:", error);
+        alert(error.message || "Volunteer approve nahi ho saka.");
+    }
+}
+
+async function editVolunteer(phone, current) {
+    const name = prompt("Volunteer ka naam:", current.name || "");
+    if (name === null) return;
+    const branch = prompt("Branch (ME / CS / AE / Civil):", current.branch || "");
+    if (branch === null) return;
+    const semester = prompt("Semester (3rd / 5th):", current.semester || "");
+    if (semester === null) return;
+
+    try {
+        await apiPost("updateVolunteer", { phone, name, branch, semester });
+        alert("Volunteer profile update ho gayi.");
+        refreshVolunteerLists();
+    } catch (error) {
+        console.error("Volunteer update error:", error);
+        alert(error.message || "Volunteer profile update nahi ho saki.");
+    }
+}
+
+async function deleteVolunteer(phone) {
+    if (!confirm("Kya aap is volunteer ko delete karna chahte hain?")) return;
+    try {
+        await apiPost("deleteVolunteer", { phone });
+        alert("Volunteer delete ho gaya.");
+        refreshVolunteerLists();
+    } catch (error) {
+        console.error("Volunteer delete error:", error);
+        alert(error.message || "Volunteer delete nahi ho saka.");
+    }
+}
+
+function refreshVolunteerLists() {
+    loadPendingVolunteers();
+    loadApprovedVolunteers();
+}
+
+/* =========================================================================
+   PARTICIPANT STATUS
+   ========================================================================= */
+async function checkParticipantStatus() {
+    const phone = $("checkPhone").value.trim();
+    const result = $("statusResult");
+    if (!phone) { alert("Phone number daalein!"); return; }
+
+    try {
+        const data = await apiGet("checkStatus", { phone });
+        result.className = data.found
+            ? "mt-4 rounded-xl bg-emerald-50 p-3 text-[13px] font-bold text-emerald-700 ring-1 ring-emerald-200"
+            : "mt-4 rounded-xl bg-rose-50 p-3 text-[13px] font-bold text-rose-700 ring-1 ring-rose-200";
+        result.innerText = data.found
+            ? `Status: Form Bhara gaya hai! Event: ${data.event}, Name: ${data.name}`
+            : "Status: Aapka form abhi tak nahi bhara gaya hai.";
+    } catch (error) {
+        console.error("Status check error:", error);
+        alert("Error checking status.");
+    }
+}
+
+/* =========================================================================
+   ADMIN: MEETINGS
+   ========================================================================= */
+async function saveMeetingDetails() {
+    const meetingDate = $("meetingDate").value;
+    const decision = $("meetingDecision").value.trim();
+    const nextDate = $("nextMeetingDate").value;
+    if (!meetingDate || !decision || !nextDate) { alert("Sabhi fields bharein!"); return; }
+
+    const button = $("saveMeetingBtn");
+    button.disabled = true;
+    try {
+        await apiPost("addMeeting", { meetingDate, decision, nextDate });
+        $("meetingDecision").value = "";
+        alert("Meeting Details Saved Successfully!");
+    } catch (error) {
+        console.error("Meeting save error:", error);
+        alert(error.message || "Meeting details save nahi ho saki.");
+    } finally {
+        button.disabled = false;
+    }
+}
+
+/* =========================================================================
+   ADMIN: MEDIA UPLOAD
+   ========================================================================= */
+async function uploadAdminMedia() {
+    const title = $("mediaTitle").value.trim();
+    const file = $("mediaFile").files[0];
+    if (!title || !file) { alert("Title aur file select karein!"); return; }
+    if (file.size > MAX_UPLOAD_BYTES) { alert("File 5 MB se chhoti honi chahiye."); return; }
+
+    const button = $("uploadMediaBtn");
+    button.disabled = true;
+    button.innerText = "Uploading...";
+    try {
+        const { base64Data, mimeType } = await readFileAsBase64(file);
+        await apiPost("uploadMedia", {
+            mediaType: $("mediaType").value,
+            title,
+            fileData: base64Data,
+            fileMimeType: mimeType,
+            fileName: file.name
+        });
+        $("mediaTitle").value = "";
+        $("mediaFile").value = "";
+        alert("Media uploaded successfully and available in Gallery!");
+    } catch (error) {
+        console.error("Media upload error:", error);
+        alert(error.message || "Media upload nahi ho saka.");
+    } finally {
+        button.disabled = false;
+        button.innerText = "Upload Media";
+    }
+}
+
+function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = String(reader.result);
+            resolve({
+                base64Data: result.split(",")[1],
+                mimeType: result.substring(result.indexOf(":") + 1, result.indexOf(";"))
             });
-        }
-
-        function loadPendingVolunteers() {
-            fetch(API_URL + "?action=getPendingVolunteers")
-            .then(res => {
-                if (!res.ok) throw new Error(`API error: ${res.status}`);
-                return res.json();
-            })
-            .then(data => {
-                let container = document.getElementById("pendingVolunteersList");
-                if(!data.volunteers || data.volunteers.length === 0) {
-                    container.innerHTML = "Koi pending application nahi hai.";
-                    return;
-                }
-                container.innerHTML = "";
-                data.volunteers.forEach((v, index) => {
-                    const volunteerId = v.volunteerId || v.id || v.phone || "Pending";
-                    container.innerHTML += `<article class="volunteer-card">
-                        <span class="volunteer-id">ID: ${escapeVolunteerText(volunteerId)}</span>
-                        <h3>${escapeVolunteerText(v.name || "Unnamed Volunteer")}</h3>
-                        <p><strong>Branch:</strong> ${escapeVolunteerText(v.branch || "-")}</p>
-                        <p><strong>Semester:</strong> ${escapeVolunteerText(v.semester || "-")}</p>
-                        <p><strong>Phone:</strong> ${escapeVolunteerText(v.phone || "-")}</p>
-                        <div class="volunteer-actions">
-                            <button onclick="approveVolunteer('${escapeVolunteerAttribute(v.phone)}')" style="background:#10b981;">Approve</button>
-                            <button class="edit" onclick="editVolunteer('${escapeVolunteerAttribute(v.phone)}', '${escapeVolunteerAttribute(v.name)}', '${escapeVolunteerAttribute(v.branch)}', '${escapeVolunteerAttribute(v.semester)}')">Edit</button>
-                            <button class="delete" onclick="deleteVolunteer('${escapeVolunteerAttribute(v.phone)}')">Delete</button>
-                        </div>
-                    </article>`;
-                });
-            }).catch(error => {
-                console.error("Pending volunteer error:", error);
-                document.getElementById("pendingVolunteersList").innerHTML = "Pending volunteers load nahi hue. Apps Script me getPendingVolunteers action check karein.";
-            });
-        }
-
-        function escapeVolunteerText(value) {
-            return String(value || "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
-        }
-
-        function escapeVolunteerAttribute(value) {
-            return String(value || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-        }
-
-        function loadApprovedVolunteers() {
-            const container = document.getElementById("approvedVolunteersList");
-            const cached = localStorage.getItem(APPROVED_VOLUNTEERS_CACHE_KEY);
-            if (cached) {
-                try { renderApprovedVolunteers(JSON.parse(cached)); } catch (error) { localStorage.removeItem(APPROVED_VOLUNTEERS_CACHE_KEY); }
-            }
-            fetch(API_URL + "?action=getApprovedVolunteers")
-            .then(res => {
-                if (!res.ok) throw new Error(`API error: ${res.status}`);
-                return res.json();
-            })
-            .then(data => {
-                localStorage.setItem(APPROVED_VOLUNTEERS_CACHE_KEY, JSON.stringify(data));
-                renderApprovedVolunteers(data);
-            })
-            .catch(error => {
-                console.error("Approved volunteer error:", error);
-                if (!cached) container.innerHTML = "<p style='font-size:13px; color:#dc2626;'>Volunteers load nahi ho sake.</p>";
-            });
-        }
-
-        function renderApprovedVolunteers(data) {
-            const container = document.getElementById("approvedVolunteersList");
-                if (!data.volunteers || data.volunteers.length === 0) {
-                    container.innerHTML = "<p style='font-size:13px; color:#64748b;'>Abhi koi approved volunteer nahi hai.</p>";
-                    return;
-                }
-                const isAdmin = localStorage.getItem("isAdmin") === "true";
-                container.innerHTML = data.volunteers.map(v => {
-                    const volunteerId = v.volunteerId || v.id || v.phone || "Volunteer";
-                    const phone = escapeVolunteerAttribute(v.phone);
-                    const name = escapeVolunteerAttribute(v.name);
-                    const branch = escapeVolunteerAttribute(v.branch);
-                    const semester = escapeVolunteerAttribute(v.semester);
-                    const adminActions = isAdmin ? `<div class="volunteer-actions"><button class="edit" onclick="editVolunteer('${phone}', '${name}', '${branch}', '${semester}')">Edit</button><button class="delete" onclick="deleteVolunteer('${phone}')">Delete</button></div>` : "";
-                    return `<article class="volunteer-card">
-                        <span class="volunteer-id">ID: ${escapeVolunteerText(volunteerId)}</span>
-                        <h3>${escapeVolunteerText(v.name || "Unnamed Volunteer")}</h3>
-                        <p><strong>Branch:</strong> ${escapeVolunteerText(v.branch || "-")}</p>
-                        <p><strong>Semester:</strong> ${escapeVolunteerText(v.semester || "-")}</p>
-                        <p><strong>Phone:</strong> ${escapeVolunteerText(v.phone || "-")}</p>
-                        ${adminActions}
-                    </article>`;
-                }).join("");
-        }
-
-        function editVolunteer(phone, oldName, oldBranch, oldSemester) {
-            if (localStorage.getItem("isAdmin") !== "true") return;
-            const name = prompt("Volunteer ka naam:", oldName || "");
-            if (name === null) return;
-            const branch = prompt("Branch (ME / CS / AE / Civil):", oldBranch || "");
-            if (branch === null) return;
-            const semester = prompt("Semester (3rd / 5th):", oldSemester || "");
-            if (semester === null) return;
-
-            fetch(API_URL, { 
-                method: "POST", 
-                body: JSON.stringify({ action: "updateVolunteer", phone, name, branch, semester }) 
-            })
-            .then(res => {
-                if (!res.ok) throw new Error(`API error: ${res.status}`);
-                return res.json();
-            })
-            .then(result => {
-                if (result.status && result.status !== "success") throw new Error(result.message || "Update rejected");
-                alert("Volunteer profile update ho gayi.");
-                loadPendingVolunteers();
-                loadApprovedVolunteers();
-            })
-            .catch(error => {
-                console.error("Volunteer update error:", error);
-                alert("Volunteer profile update nahi ho saki. Apps Script me updateVolunteer action check karein.");
-            });
-        }
-
-        function deleteVolunteer(phone) {
-            if (localStorage.getItem("isAdmin") !== "true") return;
-            if (!confirm("Kya aap is volunteer ko delete karna chahte hain?")) return;
-            fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "deleteVolunteer", phone }) })
-            .then(res => {
-                if (!res.ok) throw new Error(`API error: ${res.status}`);
-                return res.json();
-            })
-            .then(result => {
-                if (result.status && result.status !== "success") throw new Error(result.message || "Delete rejected");
-                alert("Volunteer delete ho gaya.");
-                loadPendingVolunteers();
-                loadApprovedVolunteers();
-            })
-            .catch(error => {
-                console.error("Volunteer delete error:", error);
-                alert("Volunteer delete nahi ho saka.");
-            });
-        }
-
-        function approveVolunteer(phone) {
-            fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "approveVolunteer", phone: phone }) })
-            .then(res => {
-                if (!res.ok) throw new Error(`API error: ${res.status}`);
-                return res.json();
-            })
-            .then(data => {
-                if (data.status && data.status !== "success") throw new Error(data.message || "Approval rejected");
-                alert("Volunteer Approved!");
-                loadPendingVolunteers();
-                loadApprovedVolunteers();
-            })
-            .catch(error => {
-                console.error("Volunteer approval error:", error);
-                alert("Volunteer approve nahi ho saka.");
-            });
-        }
-
-        function checkParticipantStatus() {
-            let phone = document.getElementById("checkPhone").value.trim();
-            if(!phone) { alert("Phone number daalein!"); return; }
-            fetch(API_URL + `?action=checkStatus&phone=${phone}`)
-            .then(res => res.json())
-            .then(data => {
-                let resBox = document.getElementById("statusResult");
-                if(data.found) {
-                    resBox.style.color = "#166534";
-                    resBox.innerText = `Status: Form Bhara gaya hai! Event: ${data.event}, Name: ${data.name}`;
-                } else {
-                    resBox.style.color = "#991b1b";
-                    resBox.innerText = "Status: Aapka form abhi tak nahi bhara gaya hai.";
-                }
-            }).catch(() => alert("Error checking status."));
-        }
-
-        function saveMeetingDetails() {
-            let meetingDate = document.getElementById("meetingDate").value;
-            let decision = document.getElementById("meetingDecision").value;
-            let nextDate = document.getElementById("nextMeetingDate").value;
-            if(!meetingDate || !decision || !nextDate) { alert("Sabhi fields bharein!"); return; }
-            let meetingData = { action: "addMeeting", meetingDate, decision, nextDate };
-            fetch(API_URL, { method: "POST", body: JSON.stringify(meetingData) })
-            .then(() => { alert("Meeting Details Saved Successfully!"); document.getElementById("meetingDecision").value = ""; });
-        }
-
-        function uploadAdminMedia() {
-            let type = document.getElementById("mediaType").value;
-            let title = document.getElementById("mediaTitle").value;
-            let fileInput = document.getElementById("mediaFile").files[0];
-            if(!title || !fileInput) { alert("Title aur file select karein!"); return; }
-            
-            let reader = new FileReader();
-            reader.onload = function() {
-                let payload = {
-                    action: "uploadMedia",
-                    mediaType: type,
-                    title: title,
-                    fileData: reader.result.split(",")[1],
-                    fileName: fileInput.name
-                };
-                fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
-                .then(res => res.json())
-                .then(() => { alert("Media uploaded successfully and available in Gallery!"); document.getElementById("mediaTitle").value = ""; });
-            };
-            reader.readAsDataURL(fileInput);
-        }
-    </script>
+        };
+        reader.onerror = () => reject(new Error("File read nahi ho saki."));
+        reader.readAsDataURL(file);
+    });
+}
+</script>
 </body>
 </html>

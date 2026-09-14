@@ -3,162 +3,456 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="theme-color" content="#7c3aed">
     <title>Collection Entry - Event Manager</title>
-    <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: Segoe UI, sans-serif; background: #f4f6f9; color: #1e293b; }
-        nav { background: #4f46e5; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: relative; }
-        nav .nav-brand { font-size: 18px; font-weight: bold; }
-        .menu-btn { display: none; background: none; border: 0; color: white; font-size: 24px; width: auto; padding: 0; }
-        nav ul { list-style: none; display: flex; gap: 12px; margin: 0; padding: 0; }
-        nav a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; margin: 0; }
-        nav a.active { font-weight: bold; }
-        .container { max-width: 1100px; margin: 22px auto; padding: 0 15px; }
-        .box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px #0000000d; margin-bottom: 18px; }
-        h1, h2 { margin-top: 0; color: #3730a3; }
-        h1 { font-size: 22px; } h2 { font-size: 17px; }
-        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-        input, select, button { width: 100%; padding: 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
-        button { background: #4f46e5; color: white; border: 0; font-weight: 600; cursor: pointer; }
-        .danger { background: #dc2626; } .warning { background: #d97706; }
-        .actions { display: flex; gap: 6px; min-width: 130px; }
-        .actions button { padding: 6px; }
-        .qr { display: none; text-align: center; padding: 10px; margin-top: 10px; background: #f8fafc; border: 1px dashed #cbd5e1; }
-        .qr img { width: 170px; height: 170px; object-fit: contain; background: white; }
-        .filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-        .table-wrap { overflow-x: auto; } table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
-        th, td { text-align: left; padding: 9px; border-bottom: 1px solid #e2e8f0; } th { background: #f8fafc; }
-        #formBox { display: none; } #cancelEdit { display: none; background: #64748b; margin-top: 8px; }
-        @media (max-width: 768px) {
-            .grid, .filters { grid-template-columns: 1fr; }
-            .menu-btn { display: block; }
-            nav ul { display: none; flex-direction: column; width: 100%; position: absolute; top: 100%; left: 0; background: #4338ca; padding: 15px 20px; z-index: 1000; gap: 12px; }
-            nav ul.active { display: flex; }
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        /* ---- Festive Violet & Amber theme tokens ---- */
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand:  { 50:"#f5f3ff", 100:"#ede9fe", 200:"#ddd6fe", 300:"#c4b5fd", 400:"#a78bfa", 500:"#8b5cf6", 600:"#7c3aed", 700:"#6d28d9", 800:"#5b21b6", 900:"#4c1d95", DEFAULT:"#7c3aed" },
+                        accent: { 400:"#e879f9", 500:"#d946ef", 600:"#c026d3", DEFAULT:"#d946ef" },
+                        gold:   { 300:"#fcd34d", 400:"#fbbf24", 500:"#f59e0b", DEFAULT:"#fbbf24" },
+                        ink:    { 400:"#8b849f", 500:"#6b6485", 700:"#3f3a56", 900:"#1e1b2e" },
+                        canvas: "#faf7ff"
+                    },
+                    fontFamily: {
+                        sans:    ["Inter", '"Segoe UI"', "system-ui", "sans-serif"],
+                        display: ['"Plus Jakarta Sans"', '"Segoe UI"', "system-ui", "sans-serif"]
+                    },
+                    boxShadow: {
+                        soft: "0 1px 2px rgba(76,29,149,.04), 0 8px 24px -8px rgba(76,29,149,.14)",
+                        lift: "0 8px 16px -4px rgba(76,29,149,.12), 0 24px 48px -12px rgba(76,29,149,.24)",
+                        glow: "0 8px 20px -6px rgba(124,58,237,.45)"
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer components {
+            /* ---- Shell ---- */
+            .topbar    { @apply sticky top-0 z-40 bg-gradient-to-r from-brand-700 via-brand-600 to-accent-600 text-white shadow-lg shadow-brand-900/20; }
+            .brandmark { @apply font-display text-lg font-extrabold tracking-tight; }
+
+            /* ---- Navigation ---- */
+            .nav-links         { @apply absolute left-0 top-full z-50 hidden w-full flex-col gap-1 border-t border-white/15 bg-brand-700 p-3 shadow-xl md:static md:flex md:w-auto md:flex-row md:items-center md:gap-1 md:border-0 md:bg-transparent md:p-0 md:shadow-none; }
+            .nav-links.is-open { @apply flex; }
+            .nav-link          { @apply block rounded-lg px-3 py-2 text-[13px] font-semibold text-white/85 transition hover:bg-white/15 hover:text-white; }
+            .nav-link-active   { @apply bg-white/20 text-white; }
+
+            /* ---- Cards ---- */
+            .card               { @apply mb-5 rounded-2xl border border-brand-100 bg-white p-5 shadow-soft md:p-6; }
+            .card-title         { @apply mb-4 flex items-center gap-2.5 font-display text-base font-bold text-ink-900; }
+            .card-title::before { content: ""; @apply block h-5 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-brand-500 to-accent-500; }
+            .muted              { @apply text-[13px] text-ink-500; }
+
+            /* ---- Forms ---- */
+            .field-label { @apply mb-1.5 block text-[13px] font-semibold text-ink-700; }
+            .input       { @apply w-full rounded-xl border border-brand-100 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm outline-none transition placeholder:text-ink-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/15 disabled:bg-brand-50 disabled:text-ink-400; }
+
+            /* ---- Buttons ---- */
+            .btn         { @apply inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-accent-600 px-4 py-2.5 text-sm font-bold text-white shadow-glow transition hover:brightness-110 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none; }
+            .btn-sm      { @apply w-auto rounded-lg px-3 py-1.5 text-xs; }
+            .btn-danger  { @apply bg-gradient-to-r from-rose-500 to-red-600 shadow-none; }
+            .btn-warning { @apply bg-gradient-to-r from-amber-500 to-orange-500 shadow-none; }
+            .btn-muted   { @apply bg-gradient-to-r from-slate-400 to-slate-500 shadow-none; }
+            .btn-ghost   { @apply border border-brand-200 bg-white bg-none text-brand-700 shadow-none hover:bg-brand-50; }
+
+            /* ---- Tables ---- */
+            .table-shell         { @apply overflow-x-auto rounded-xl border border-brand-100; }
+            .data-table          { @apply w-full border-collapse text-left text-[13px]; }
+            .data-table th       { @apply whitespace-nowrap bg-brand-50 px-3 py-3 font-display text-[11px] font-bold uppercase tracking-wider text-brand-800; }
+            .data-table td       { @apply border-t border-brand-100 px-3 py-3 text-ink-700; }
+            .data-table tbody tr { @apply transition hover:bg-brand-50/60; }
         }
     </style>
 </head>
-<body>
-    <nav>
-        <div class="nav-brand">🎓 College Event Manager</div>
-        <button class="menu-btn" id="menuButton" type="button" aria-label="Open navigation">☰</button>
-        <ul id="navLinks">
-            <li><a href="index.html">Dashboard</a></li>
-            <li><a href="collection-entry.html" class="active">Collection</a></li>
-            <li><a href="expenses.html">Expenses</a></li>
-            <li><a href="tasks.html">Tasks &amp; Programs</a></li>
-            <li><a href="participants.html">Participants</a></li>
-            <li><a href="access.html">Access Control</a></li>
-        </ul>
-    </nav>
-    <main class="container">
-        <div class="box"><h1>Collection Management</h1><p id="roleText">Read-only mode</p></div>
+<body class="bg-canvas font-sans text-ink-900">
 
-        <section class="box" id="formBox">
-            <h2 id="formTitle">New Collection Entry</h2>
+    <nav class="topbar">
+        <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
+            <div class="brandmark">🎓 College Event Manager</div>
+            <button type="button" data-menu-toggle class="cursor-pointer rounded-lg p-1 text-2xl leading-none transition hover:bg-white/15 md:hidden" aria-label="Menu">☰</button>
+            <ul id="navLinks" class="nav-links">
+                <li><a href="index.html" class="nav-link">Dashboard</a></li>
+                <li><a href="collection-entry.html" class="nav-link nav-link-active">Collection</a></li>
+                <li><a href="expenses.html" class="nav-link">Expenses</a></li>
+                <li><a href="tasks.html" class="nav-link">Tasks &amp; Programs</a></li>
+                <li><a href="participants.html" class="nav-link">Participants</a></li>
+                <li><a href="access.html" class="nav-link">Access Control</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="mx-auto max-w-6xl px-4 py-6">
+
+        <div class="mb-5 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-700 via-brand-600 to-accent-600 p-6 text-white shadow-lift md:p-8">
+            <h1 class="font-display text-2xl font-extrabold md:text-3xl">💰 Collection Management</h1>
+            <p id="roleText" class="mt-1.5 inline-block rounded-full bg-white/15 px-3 py-1 text-[13px] font-semibold backdrop-blur">Read-only mode</p>
+        </div>
+
+        <section class="card hidden" id="formBox">
+            <h2 id="formTitle" class="card-title">New Collection Entry</h2>
             <form id="collectionForm">
-                <div class="grid">
-                    <div><label for="name">Name / Faculty Name</label><input id="name" required></div>
-                    <div><label for="branch">Branch</label><select id="branch" required><option value="">Select Branch</option><option>ME</option><option>CS</option><option>AE</option><option>Civil</option></select></div>
-                    <div><label for="semester">Semester</label><select id="semester" required><option value="">Select Semester</option><option>3rd</option><option>5th</option></select></div>
-                    <div><label for="category">Category</label><select id="category" required><option value="Regular">Regular Student</option><option value="Lateral">Lateral Entry Student</option><option value="Faculty">Faculty Member</option></select></div>
-                    <div><label for="amount">Amount (₹)</label><input id="amount" type="number" min="1" required></div>
-                    <div><label for="mode">Payment Mode</label><select id="mode"><option>Cash</option><option>UPI</option></select></div>
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                        <label class="field-label" for="name">Name / Faculty Name</label>
+                        <input id="name" class="input" maxlength="120" required>
+                    </div>
+                    <div>
+                        <label class="field-label" for="branch">Branch</label>
+                        <select id="branch" class="input" required>
+                            <option value="">Select Branch</option>
+                            <option>ME</option><option>CS</option><option>AE</option><option>Civil</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="field-label" for="semester">Semester</label>
+                        <select id="semester" class="input" required>
+                            <option value="">Select Semester</option>
+                            <option>3rd</option><option>5th</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="field-label" for="category">Category</label>
+                        <select id="category" class="input" required>
+                            <option value="Regular">Regular Student</option>
+                            <option value="Lateral">Lateral Entry Student</option>
+                            <option value="Faculty">Faculty Member</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="field-label" for="amount">Amount (₹)</label>
+                        <input id="amount" type="number" min="1" class="input" required>
+                    </div>
+                    <div>
+                        <label class="field-label" for="mode">Payment Mode</label>
+                        <select id="mode" class="input"><option>Cash</option><option>UPI</option></select>
+                    </div>
                 </div>
-                <div class="qr" id="qrBox"><img id="qrImage" src="https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&amp;sz=w1000" alt="UPI QR Code"><p id="qrMessage">UPI payment ke liye QR scan karein.</p></div>
-                <button id="saveButton" type="submit">Save Collection</button>
-                <button id="cancelEdit" type="button">Cancel Edit</button>
+
+                <div class="mt-4 hidden rounded-2xl border-2 border-dashed border-brand-200 bg-gradient-to-br from-brand-50 to-white p-5 text-center" id="qrBox">
+                    <p class="mb-3 font-display text-sm font-bold text-brand-800">📱 UPI se payment karein</p>
+                    <img id="qrImage" class="mx-auto h-48 w-48 rounded-xl bg-white object-contain p-2 shadow-soft" alt="UPI QR Code">
+                    <p id="qrMessage" class="muted mt-3">UPI payment ke liye QR scan karein.</p>
+                </div>
+
+                <div class="mt-5 flex flex-col gap-2 sm:flex-row">
+                    <button id="saveButton" type="submit" class="btn">Save Collection</button>
+                    <button id="cancelEdit" type="button" class="btn btn-muted hidden sm:w-40">Cancel Edit</button>
+                </div>
             </form>
         </section>
 
-        <section class="box">
-            <h2>Collection Records</h2>
-            <input id="search" placeholder="Naam ya branch se search karein">
-            <div class="filters" style="margin-top:10px">
-                <select id="semesterFilter"><option value="">All Semesters</option><option>3rd</option><option>5th</option></select>
-                <select id="branchFilter"><option value="">All Branches</option><option>ME</option><option>CS</option><option>AE</option><option>Civil</option></select>
-                <select id="categoryFilter"><option value="">All Categories</option><option value="Regular">Regular</option><option value="Lateral">Lateral</option><option value="Faculty">Faculty</option></select>
-                <button id="clearFilters" type="button">Clear Filters</button>
+        <section class="card">
+            <h2 class="card-title">Collection Records</h2>
+            <input id="search" class="input" placeholder="🔍 Naam ya branch se search karein">
+
+            <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
+                <select id="semesterFilter" class="input"><option value="">All Semesters</option><option>3rd</option><option>5th</option></select>
+                <select id="branchFilter" class="input"><option value="">All Branches</option><option>ME</option><option>CS</option><option>AE</option><option>Civil</option></select>
+                <select id="categoryFilter" class="input">
+                    <option value="">All Categories</option>
+                    <option value="Regular">Regular</option>
+                    <option value="Lateral">Lateral</option>
+                    <option value="Faculty">Faculty</option>
+                </select>
+                <button id="clearFilters" type="button" class="btn btn-ghost">Clear Filters</button>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>Name</th><th>Branch</th><th>Semester</th><th>Category</th><th>Amount</th><th>Mode</th><th>Timestamp</th><th id="actionsHeader" style="display:none">Actions</th></tr></thead><tbody id="records"><tr><td colspan="8">Loading...</td></tr></tbody></table></div>
+
+            <div class="mt-4 table-shell">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th><th>Branch</th><th>Semester</th><th>Category</th>
+                            <th>Amount</th><th>Mode</th><th>Timestamp</th>
+                            <th id="actionsHeader" class="hidden">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="records"><tr><td colspan="8" class="py-6 text-center">Loading...</td></tr></tbody>
+                </table>
+            </div>
         </section>
     </main>
+
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbynen3fhejkRkM6x1lZV1ele__6PPURLFp1Z1qz1U7VfORsY3cySGkMOPi4LpJfkZf8/exec";
-const DATA_CACHE_KEY = "eventManagerData";
+/* =========================================================================
+   CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
+   ========================================================================= */
+const API_URL = "https://script.google.com/macros/s/AKfycbyNBHtt7SsOhtHEphfazBxScg-nEr9yG89RnT4bfbagNbWGs6H9E1fRR-Q54J1JTEGe/exec";
 const QR_URL = "https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&sz=w1000";
+
+/* =========================================================================
+   SESSION — sirf UI ke liye. Asli permission Apps Script me check hoti hai,
+   aur volunteer ki branch/semester server apne session se leta hai.
+   ========================================================================= */
+const STORE_PREFIX = "em.";
+const CACHE_KEY = STORE_PREFIX + "data";
+
+const auth = {
+    token:       () => localStorage.getItem(STORE_PREFIX + "token") || "",
+    role:        () => localStorage.getItem(STORE_PREFIX + "role") || "",
+    branch:      () => localStorage.getItem(STORE_PREFIX + "branch") || "",
+    semester:    () => localStorage.getItem(STORE_PREFIX + "semester") || "",
+    isAdmin:     () => auth.role() === "Admin",
+    isVolunteer: () => auth.role() === "Volunteer"
+};
+
+/* =========================================================================
+   API — Content-Type header jaan-bujh kar set nahi kiya gaya (CORS preflight).
+   ========================================================================= */
+async function apiGet(action, params = {}) {
+    const query = new URLSearchParams({ action, token: auth.token(), ...params });
+    const response = await fetch(`${API_URL}?${query}`);
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+    return response.json();
+}
+
+async function apiPost(action, payload = {}) {
+    const response = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ action, token: auth.token(), ...payload })
+    });
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+    const result = await response.json();
+    if (result.status && result.status !== "success") throw new Error(result.message || "Request rejected");
+    return result;
+}
+
+/* =========================================================================
+   OUTPUT SAFETY
+   ========================================================================= */
+const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => HTML_ENTITIES[character]);
+}
+
+/* =========================================================================
+   PAGE STATE
+   ========================================================================= */
+const $ = id => document.getElementById(id);
 let rows = [];
 let editingIndex = null;
-const $ = id => document.getElementById(id);
 
-$("menuButton").addEventListener("click", () => $("navLinks").classList.toggle("active"));
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelector("[data-menu-toggle]").addEventListener("click", () => $("navLinks").classList.toggle("is-open"));
 
-window.addEventListener("load", () => {
-    const role = localStorage.getItem("userRole");
-    const admin = localStorage.getItem("isAdmin") === "true";
-    const volunteer = role === "Volunteer";
-    $("roleText").innerText = admin ? "Admin: full collection access" : volunteer ? `Volunteer: ${localStorage.getItem("volunteerBranch")} - ${localStorage.getItem("volunteerSemester")}` : "Read-only mode";
-    $("actionsHeader").style.display = admin ? "table-cell" : "none";
-    if (admin || volunteer) { $("formBox").style.display = "block"; if (volunteer) configureVolunteer(); }
+    $("roleText").innerText = auth.isAdmin()
+        ? "👑 Admin: full collection access"
+        : auth.isVolunteer()
+            ? `🙋 Volunteer: ${auth.branch()} - ${auth.semester()}`
+            : "👁️ Read-only mode";
+
+    $("actionsHeader").classList.toggle("hidden", !auth.isAdmin());
+    if (auth.isAdmin() || auth.isVolunteer()) {
+        $("formBox").classList.remove("hidden");
+        if (auth.isVolunteer()) configureVolunteer();
+    }
+
     $("qrImage").src = QR_URL;
-    $("qrImage").addEventListener("error", () => { $("qrMessage").innerText = "QR image load nahi hui. Drive sharing me 'Anyone with the link' select karein."; });
+    $("qrImage").addEventListener("error", () => {
+        $("qrMessage").innerText = "QR image load nahi hui. Drive sharing me 'Anyone with the link' select karein.";
+    });
+
     $("mode").addEventListener("change", updateQr);
     $("collectionForm").addEventListener("submit", saveCollection);
     $("cancelEdit").addEventListener("click", resetCollectionEdit);
     ["search", "semesterFilter", "branchFilter", "categoryFilter"].forEach(id => $(id).addEventListener("input", render));
-    $("clearFilters").addEventListener("click", () => { $("search").value = ""; $("semesterFilter").value = ""; $("branchFilter").value = ""; $("categoryFilter").value = ""; render(); });
-    updateQr(); loadData();
+    $("clearFilters").addEventListener("click", () => {
+        ["search", "semesterFilter", "branchFilter", "categoryFilter"].forEach(id => { $(id).value = ""; });
+        render();
+    });
+
+    // Edit / Delete buttons event delegation se — inline onclick ke bina.
+    $("records").addEventListener("click", event => {
+        const button = event.target.closest("[data-edit], [data-delete]");
+        if (!button) return;
+        if (button.dataset.edit !== undefined) startEdit(Number(button.dataset.edit));
+        else removeEntry(Number(button.dataset.delete));
+    });
+
+    updateQr();
+    loadData();
 });
 
+/** Volunteer apni hi branch/semester ki entry kar sakta hai — server bhi yahi enforce karta hai. */
 function configureVolunteer() {
-    const branch = localStorage.getItem("volunteerBranch");
-    const semester = localStorage.getItem("volunteerSemester");
-    if (!branch || !semester) { alert("Volunteer session incomplete hai."); location.href = "access.html"; return; }
-    $("branch").value = branch; $("semester").value = semester; $("branch").disabled = true; $("semester").disabled = true;
-    [...$("category").options].forEach(option => option.hidden = option.value === "Faculty" || (semester === "5th" && option.value === "Lateral"));
+    const branch = auth.branch();
+    const semester = auth.semester();
+    if (!branch || !semester) {
+        alert("Volunteer session incomplete hai.");
+        location.href = "access.html";
+        return;
+    }
+    $("branch").value = branch;
+    $("semester").value = semester;
+    $("branch").disabled = true;
+    $("semester").disabled = true;
+    [...$("category").options].forEach(option => {
+        option.hidden = option.value === "Faculty" || (semester === "5th" && option.value === "Lateral");
+    });
     $("category").value = "Regular";
 }
 
-function updateQr() { $("qrBox").style.display = $("mode").value === "UPI" ? "block" : "none"; }
-function loadData() {
-    const cached = localStorage.getItem(DATA_CACHE_KEY);
-    if (cached) {
-        try { rows = JSON.parse(cached).Collection || []; render(); } catch (error) { localStorage.removeItem(DATA_CACHE_KEY); }
-    }
-    fetch(API_URL + "?action=getData").then(response => response.json()).then(data => {
-        localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(data));
-        rows = data.Collection || [];
-        render();
-    }).catch(() => { if (!cached) alert("Data load nahi ho saka."); });
-}
-function render() {
-    const admin = localStorage.getItem("isAdmin") === "true";
-    const search = $("search").value.toLowerCase(); const sem = $("semesterFilter").value; const branch = $("branchFilter").value; const category = $("categoryFilter").value;
-    const body = $("records"); body.innerHTML = "";
-    rows.slice(1).forEach((row, offset) => {
-        const index = offset + 1; const text = `${row[0] || ""} ${row[1] || ""}`.toLowerCase();
-        if (!text.includes(search) || (sem && row[2] !== sem) || (branch && row[1] !== branch) || (category && row[3] !== category)) return;
-        body.innerHTML += `<tr><td>${row[0] || "-"}</td><td>${row[1] || "-"}</td><td>${row[2] || "-"}</td><td>${row[3] || "-"}</td><td>₹ ${row[4] || 0}</td><td>${row[5] || "-"}</td><td>${row[6] || "-"}</td>${admin ? `<td><div class="actions"><button class="warning" onclick="startEdit(${index})">Edit</button><button class="danger" onclick="removeEntry(${index})">Delete</button></div></td>` : ""}</tr>`;
-    });
-    if (!body.innerHTML) body.innerHTML = `<tr><td colspan="${admin ? 8 : 7}">Koi record nahi mila.</td></tr>`;
+function updateQr() {
+    $("qrBox").classList.toggle("hidden", $("mode").value !== "UPI");
 }
 
-function validVolunteerEntry() {
-    if (localStorage.getItem("userRole") !== "Volunteer") return true;
-    const semester = $("semester").value; const category = $("category").value;
-    return category !== "Faculty" && !(semester === "5th" && category === "Lateral");
+/* =========================================================================
+   DATA
+   ========================================================================= */
+async function loadData() {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+        try { rows = JSON.parse(cached).Collection || []; render(); } catch { localStorage.removeItem(CACHE_KEY); }
+    }
+    try {
+        const data = await apiGet("getData");
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheableCopy(data)));
+        rows = data.Collection || [];
+        render();
+    } catch (error) {
+        console.error("Collection load error:", error);
+        if (!cached) alert("Data load nahi ho saka.");
+    }
 }
-function saveCollection(event) {
-    event.preventDefault(); const admin = localStorage.getItem("isAdmin") === "true";
-    if (editingIndex !== null && !admin) return alert("Sirf Admin entry update kar sakta hai.");
-    if (!validVolunteerEntry()) return alert("Volunteer Faculty entry nahi kar sakta; 5th semester volunteer Lateral Entry bhi nahi bhar sakta.");
-    const payload = { action: editingIndex === null ? "addCollection" : "updateCollection", name: $("name").value, branch: $("branch").value, semester: $("semester").value, category: $("category").value, amount: $("amount").value, mode: $("mode").value, rowIndex: editingIndex };
-    fetch(API_URL, { method: "POST", body: JSON.stringify(payload) }).then(response => response.json()).then(result => { if (result.status !== "success") throw new Error(result.message); alert(editingIndex === null ? "Saved Successfully!" : "Updated Successfully!"); resetCollectionEdit(); loadData(); }).catch(() => alert("Data save nahi ho saka."));
+
+/** Logged-out visitor ke browser me participants ka personal data cache nahi karte. */
+function cacheableCopy(data) {
+    if (auth.role()) return data;
+    const copy = { ...data };
+    delete copy.Participants;
+    return copy;
 }
-function startEdit(index) { if (localStorage.getItem("isAdmin") !== "true") return; const row = rows[index]; if (!row) return; editingIndex = index; $("name").value = row[0] || ""; $("branch").value = row[1] || ""; $("semester").value = row[2] || ""; $("category").value = row[3] || "Regular"; $("amount").value = row[4] || ""; $("mode").value = row[5] || "Cash"; $("formTitle").innerText = "Edit Collection Entry"; $("saveButton").innerText = "Update Collection"; $("cancelEdit").style.display = "block"; updateQr(); $("formBox").scrollIntoView({ behavior: "smooth" }); }
-function resetCollectionEdit() { editingIndex = null; $("collectionForm").reset(); $("formTitle").innerText = "New Collection Entry"; $("saveButton").innerText = "Save Collection"; $("cancelEdit").style.display = "none"; $("qrBox").style.display = "none"; if (localStorage.getItem("userRole") === "Volunteer") configureVolunteer(); }
-function removeEntry(index) { if (localStorage.getItem("isAdmin") !== "true") return; if (!confirm("Kya aap ye entry delete karna chahte hain?")) return; fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "deleteCollection", rowIndex: index }) }).then(response => response.json()).then(result => { if (result.status !== "success") throw new Error(result.message); alert("Deleted Successfully!"); loadData(); }).catch(() => alert("Entry delete nahi ho saki.")); }
+
+function render() {
+    const isAdmin = auth.isAdmin();
+    const search = $("search").value.toLowerCase();
+    const semester = $("semesterFilter").value;
+    const branch = $("branchFilter").value;
+    const category = $("categoryFilter").value;
+
+    const visible = rows.slice(1)
+        .map((row, offset) => ({ row, index: offset + 1 }))
+        .filter(({ row }) => {
+            const text = `${row[0] || ""} ${row[1] || ""}`.toLowerCase();
+            return text.includes(search)
+                && (!semester || row[2] === semester)
+                && (!branch || row[1] === branch)
+                && (!category || row[3] === category);
+        });
+
+    $("records").innerHTML = visible.length
+        ? visible.map(({ row, index }) => recordRow(row, index, isAdmin)).join("")
+        : `<tr><td colspan="${isAdmin ? 8 : 7}" class="py-6 text-center text-ink-500">Koi record nahi mila.</td></tr>`;
+}
+
+function recordRow(row, index, isAdmin) {
+    const actions = isAdmin
+        ? `<td><div class="flex gap-1.5">
+               <button type="button" class="btn btn-sm btn-warning" data-edit="${index}">Edit</button>
+               <button type="button" class="btn btn-sm btn-danger" data-delete="${index}">Delete</button>
+           </div></td>`
+        : "";
+    return `<tr>
+        <td class="font-semibold text-ink-900">${escapeHtml(row[0] || "-")}</td>
+        <td>${escapeHtml(row[1] || "-")}</td>
+        <td>${escapeHtml(row[2] || "-")}</td>
+        <td>${escapeHtml(row[3] || "-")}</td>
+        <td class="whitespace-nowrap font-bold text-emerald-700">₹ ${escapeHtml(row[4] || 0)}</td>
+        <td>${escapeHtml(row[5] || "-")}</td>
+        <td class="whitespace-nowrap text-ink-500">${escapeHtml(row[6] || "-")}</td>
+        ${actions}
+    </tr>`;
+}
+
+/* =========================================================================
+   SAVE / EDIT / DELETE
+   ========================================================================= */
+async function saveCollection(event) {
+    event.preventDefault();
+    if (editingIndex !== null && !auth.isAdmin()) {
+        alert("Sirf Admin entry update kar sakta hai.");
+        return;
+    }
+
+    const button = $("saveButton");
+    button.disabled = true;
+    try {
+        await apiPost(editingIndex === null ? "addCollection" : "updateCollection", {
+            name: $("name").value,
+            branch: $("branch").value,
+            semester: $("semester").value,
+            category: $("category").value,
+            amount: $("amount").value,
+            mode: $("mode").value,
+            rowIndex: editingIndex
+        });
+        alert(editingIndex === null ? "Saved Successfully!" : "Updated Successfully!");
+        resetCollectionEdit();
+        localStorage.removeItem(CACHE_KEY);
+        loadData();
+    } catch (error) {
+        console.error("Collection save error:", error);
+        alert(error.message || "Data save nahi ho saka.");
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function startEdit(index) {
+    if (!auth.isAdmin()) return;
+    const row = rows[index];
+    if (!row) return;
+
+    editingIndex = index;
+    $("name").value = row[0] || "";
+    $("branch").value = row[1] || "";
+    $("semester").value = row[2] || "";
+    $("category").value = row[3] || "Regular";
+    $("amount").value = row[4] || "";
+    $("mode").value = row[5] || "Cash";
+    $("formTitle").innerText = "Edit Collection Entry";
+    $("saveButton").innerText = "Update Collection";
+    $("cancelEdit").classList.remove("hidden");
+    updateQr();
+    $("formBox").scrollIntoView({ behavior: "smooth" });
+}
+
+function resetCollectionEdit() {
+    editingIndex = null;
+    $("collectionForm").reset();
+    $("formTitle").innerText = "New Collection Entry";
+    $("saveButton").innerText = "Save Collection";
+    $("cancelEdit").classList.add("hidden");
+    $("qrBox").classList.add("hidden");
+    if (auth.isVolunteer()) configureVolunteer();
+}
+
+async function removeEntry(index) {
+    if (!auth.isAdmin()) return;
+    if (!confirm("Kya aap ye entry delete karna chahte hain?")) return;
+    try {
+        await apiPost("deleteCollection", { rowIndex: index });
+        alert("Deleted Successfully!");
+        localStorage.removeItem(CACHE_KEY);
+        loadData();
+    } catch (error) {
+        console.error("Collection delete error:", error);
+        alert(error.message || "Entry delete nahi ho saki.");
+    }
+}
 </script>
 </body>
 </html>
-```[cite: 2]

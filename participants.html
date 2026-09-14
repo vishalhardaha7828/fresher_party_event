@@ -3,75 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="theme-color" content="#7c3aed">
     <title>Participants - Event Manager</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background: #f4f6f9; color: #333; }
-        nav { background: #4f46e5; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: relative; }
-        nav .nav-brand { font-size: 18px; font-weight: bold; }
-        .menu-btn { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
-        nav ul { list-style: none; display: flex; gap: 12px; margin: 0; padding: 0; }
-        nav ul li a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; }
-        @media (max-width: 768px) {
-            .menu-btn { display: block; }
-            nav ul { display: none; flex-direction: column; width: 100%; position: absolute; top: 100%; left: 0; background: #4338ca; padding: 15px 20px; z-index: 1000; gap: 12px; }
-            nav ul.active { display: flex; }
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        /* ---- Festive Violet & Amber theme tokens ---- */
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand:  { 50:"#f5f3ff", 100:"#ede9fe", 200:"#ddd6fe", 300:"#c4b5fd", 400:"#a78bfa", 500:"#8b5cf6", 600:"#7c3aed", 700:"#6d28d9", 800:"#5b21b6", 900:"#4c1d95", DEFAULT:"#7c3aed" },
+                        accent: { 400:"#e879f9", 500:"#d946ef", 600:"#c026d3", DEFAULT:"#d946ef" },
+                        gold:   { 300:"#fcd34d", 400:"#fbbf24", 500:"#f59e0b", DEFAULT:"#fbbf24" },
+                        ink:    { 400:"#8b849f", 500:"#6b6485", 700:"#3f3a56", 900:"#1e1b2e" },
+                        canvas: "#faf7ff"
+                    },
+                    fontFamily: {
+                        sans:    ["Inter", '"Segoe UI"', "system-ui", "sans-serif"],
+                        display: ['"Plus Jakarta Sans"', '"Segoe UI"', "system-ui", "sans-serif"]
+                    },
+                    boxShadow: {
+                        soft: "0 1px 2px rgba(76,29,149,.04), 0 8px 24px -8px rgba(76,29,149,.14)",
+                        lift: "0 8px 16px -4px rgba(76,29,149,.12), 0 24px 48px -12px rgba(76,29,149,.24)",
+                        glow: "0 8px 20px -6px rgba(124,58,237,.45)"
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer components {
+            /* ---- Shell ---- */
+            .topbar    { @apply sticky top-0 z-40 bg-gradient-to-r from-brand-700 via-brand-600 to-accent-600 text-white shadow-lg shadow-brand-900/20; }
+            .brandmark { @apply font-display text-lg font-extrabold tracking-tight; }
+
+            /* ---- Navigation ---- */
+            .nav-links         { @apply absolute left-0 top-full z-50 hidden w-full flex-col gap-1 border-t border-white/15 bg-brand-700 p-3 shadow-xl md:static md:flex md:w-auto md:flex-row md:items-center md:gap-1 md:border-0 md:bg-transparent md:p-0 md:shadow-none; }
+            .nav-links.is-open { @apply flex; }
+            .nav-link          { @apply block rounded-lg px-3 py-2 text-[13px] font-semibold text-white/85 transition hover:bg-white/15 hover:text-white; }
+            .nav-link-active   { @apply bg-white/20 text-white; }
+
+            /* ---- Cards ---- */
+            .card               { @apply mb-5 rounded-2xl border border-brand-100 bg-white p-5 shadow-soft md:p-6; }
+            .card-title         { @apply mb-4 flex items-center gap-2.5 font-display text-base font-bold text-ink-900; }
+            .card-title::before { content: ""; @apply block h-5 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-brand-500 to-accent-500; }
+            .muted              { @apply text-[13px] text-ink-500; }
+
+            /* ---- Forms ---- */
+            .field-label { @apply mb-1.5 block text-[13px] font-semibold text-ink-700; }
+            .input       { @apply w-full rounded-xl border border-brand-100 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm outline-none transition placeholder:text-ink-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/15; }
+
+            /* ---- Buttons ---- */
+            .btn { @apply inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-accent-600 px-4 py-2.5 text-sm font-bold text-white shadow-glow transition hover:brightness-110 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none; }
+
+            /* ---- Tables ---- */
+            .table-shell         { @apply overflow-x-auto rounded-xl border border-brand-100; }
+            .data-table          { @apply w-full border-collapse text-left text-[13px]; }
+            .data-table th       { @apply whitespace-nowrap bg-brand-50 px-3 py-3 font-display text-[11px] font-bold uppercase tracking-wider text-brand-800; }
+            .data-table td       { @apply border-t border-brand-100 px-3 py-3 align-top text-ink-700; }
+            .data-table tbody tr { @apply transition hover:bg-brand-50/60; }
+
+            /* ---- Badges ---- */
+            .badge       { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1; }
+            .badge-solo  { @apply bg-brand-50 text-brand-700 ring-brand-200; }
+            .badge-group { @apply bg-amber-50 text-amber-800 ring-amber-200; }
         }
-        .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
-        .box { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        h2 { color: #4f46e5; font-size: 16px; margin-bottom: 12px; }
-        .form-group { margin-bottom: 10px; }
-        label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; }
-        input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; outline: none; background: #fff; }
-        textarea { resize: vertical; }
-        button { background: #4f46e5; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; margin-top: 5px; }
-        .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; text-align: left; }
-        th, td { padding: 8px; border-bottom: 1px solid #eee; }
-        th { background: #f8fafc; color: #475569; }
-        .search-box { margin-bottom: 15px; }
-        .badge-solo { background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-        .badge-group { background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
     </style>
 </head>
-<body>
-    <nav>
-        <div class="nav-brand">🎓 Event Manager</div>
-        <button class="menu-btn" onclick="toggleMenu()">☰</button>
-        <ul id="navLinks">
-            <li><a href="index.html">Dashboard</a></li>
-            <li><a href="collection-entry.html">Collection</a></li>
-            <li><a href="expenses.html">Expenses</a></li>
-            <li><a href="tasks.html">Tasks & Programs</a></li>
-            <li><a href="participants.html" style="font-weight:bold;">Participants</a></li>
-            <li><a href="access.html">Access Control</a></li>
-        </ul>
+<body class="bg-canvas font-sans text-ink-900">
+
+    <nav class="topbar">
+        <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
+            <div class="brandmark">🎓 Event Manager</div>
+            <button type="button" data-menu-toggle class="cursor-pointer rounded-lg p-1 text-2xl leading-none transition hover:bg-white/15 md:hidden" aria-label="Menu">☰</button>
+            <ul id="navLinks" class="nav-links">
+                <li><a href="index.html" class="nav-link">Dashboard</a></li>
+                <li><a href="collection-entry.html" class="nav-link">Collection</a></li>
+                <li><a href="expenses.html" class="nav-link">Expenses</a></li>
+                <li><a href="tasks.html" class="nav-link">Tasks &amp; Programs</a></li>
+                <li><a href="participants.html" class="nav-link nav-link-active">Participants</a></li>
+                <li><a href="access.html" class="nav-link">Access Control</a></li>
+            </ul>
+        </div>
     </nav>
-    <div class="container">
-        <div class="box">
-            <h2>🏆 Register Participant</h2>
-            <form id="participantForm" onsubmit="submitParticipant(event)">
-                <div class="form-group">
-                    <label>Participation Type</label>
-                    <select id="pType" onchange="handleTypeChange()" required>
+
+    <div class="mx-auto max-w-5xl px-4 py-6">
+
+        <div class="mb-5 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-700 via-brand-600 to-accent-600 p-6 text-white shadow-lift md:p-8">
+            <h1 class="font-display text-2xl font-extrabold md:text-3xl">🏆 Register Participant</h1>
+            <p class="mt-1.5 text-sm text-white/85">Solo ya group — apne event ke liye naam darj karein</p>
+        </div>
+
+        <div class="card">
+            <form id="participantForm" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                    <label class="field-label" for="pType">Participation Type</label>
+                    <select id="pType" class="input" required>
                         <option value="Solo">Solo</option>
                         <option value="Group">Group</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label id="nameLabel">Participant Name</label>
-                    <input type="text" id="pName" required placeholder="Pura naam">
-                </div>
-                
-                <!-- Group Members Textarea Box -->
-                <div class="form-group" id="groupMembersGroup" style="display: none;">
-                    <label>Group Members Names (Comma lagakar likhein)</label>
-                    <textarea id="pGroupMembers" rows="3" placeholder="Jaise: Rahul, Amit, Rohit"></textarea>
+                <div>
+                    <label class="field-label" for="pName" id="nameLabel">Participant Name</label>
+                    <input type="text" id="pName" class="input" maxlength="120" required placeholder="Pura naam">
                 </div>
 
-                <div class="form-group">
-                    <label>Branch / Department</label>
-                    <select id="pBranch" required>
+                <!-- Group Members Textarea Box -->
+                <div id="groupMembersGroup" class="hidden md:col-span-2">
+                    <label class="field-label" for="pGroupMembers">Group Members Names (Comma lagakar likhein)</label>
+                    <textarea id="pGroupMembers" rows="3" maxlength="500" class="input resize-y" placeholder="Jaise: Rahul, Amit, Rohit"></textarea>
+                </div>
+
+                <div>
+                    <label class="field-label" for="pBranch">Branch / Department</label>
+                    <select id="pBranch" class="input" required>
                         <option value="">Branch Select Karein</option>
                         <option value="Civil">Civil</option>
                         <option value="CS">CS</option>
@@ -80,9 +132,9 @@
                         <option value="EC">EC</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Semester</label>
-                    <select id="pSemester" required>
+                <div>
+                    <label class="field-label" for="pSemester">Semester</label>
+                    <select id="pSemester" class="input" required>
                         <option value="">Semester Select Karein</option>
                         <option value="1st">1st Semester</option>
                         <option value="3rd">3rd Semester</option>
@@ -90,9 +142,9 @@
                         <option value="7th">7th Semester</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Event Name</label>
-                    <select id="pEvent" required>
+                <div>
+                    <label class="field-label" for="pEvent">Event Name</label>
+                    <select id="pEvent" class="input" required>
                         <option value="">Event Select Karein</option>
                         <option value="Singing">Singing</option>
                         <option value="Dance">Dance</option>
@@ -102,21 +154,23 @@
                         <option value="Coding">Coding Contest</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Phone Number (10 Digits)</label>
-                    <input type="text" id="pPhone" maxlength="10" pattern="[0-9]{10}" required placeholder="10 digit mobile number" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                <div>
+                    <label class="field-label" for="pPhone">Phone Number (10 Digits)</label>
+                    <input type="tel" id="pPhone" class="input" maxlength="10" pattern="[0-9]{10}" required placeholder="10 digit mobile number">
                 </div>
-                <button type="submit" id="savePartBtn">Register Participant</button>
+                <div class="md:col-span-2">
+                    <button type="submit" id="savePartBtn" class="btn">Register Participant →</button>
+                </div>
             </form>
         </div>
 
-        <div class="box" id="adminParticipantListSection" style="display: none;">
-            <h2>📋 Participants List (Admin Secured View)</h2>
-            <div class="search-box">
-                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="🔍 Naam, Type ya Event se search karein...">
+        <div class="card hidden" id="adminParticipantListSection">
+            <h2 class="card-title">📋 Participants List (Admin Secured View)</h2>
+            <div class="mb-4">
+                <input type="text" id="searchInput" class="input" placeholder="🔍 Naam, Type ya Event se search karein...">
             </div>
-            <div class="table-responsive">
-                <table>
+            <div class="table-shell">
+                <table class="data-table">
                     <thead>
                         <tr>
                             <th>Name / Group Members</th>
@@ -128,156 +182,189 @@
                         </tr>
                     </thead>
                     <tbody id="participantTableBody">
-                        <tr><td colspan="6" style="text-align:center;">Loading data...</td></tr>
+                        <tr><td colspan="6" class="py-6 text-center">Loading data...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
-    <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbynen3fhejkRkM6x1lZV1ele__6PPURLFp1Z1qz1U7VfORsY3cySGkMOPi4LpJfkZf8/exec";
-        let globalParticipantRows = [];
 
-        function toggleMenu() { document.getElementById("navLinks").classList.toggle("active"); }
+<script>
+/* =========================================================================
+   CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
+   ========================================================================= */
+const API_URL = "https://script.google.com/macros/s/AKfycbyNBHtt7SsOhtHEphfazBxScg-nEr9yG89RnT4bfbagNbWGs6H9E1fRR-Q54J1JTEGe/exec";
 
-        window.onload = function() {
-            let isAdmin = localStorage.getItem("isAdmin") === "true";
-            if(isAdmin) {
-                document.getElementById("adminParticipantListSection").style.display = "block";
-                let cached = localStorage.getItem("eventManagerData");
-                if(cached) { renderParticipants(JSON.parse(cached)); }
-                fetchData();
-            }
+/* =========================================================================
+   SESSION — sirf UI ke liye; asli permission Apps Script me check hoti hai.
+   ========================================================================= */
+const STORE_PREFIX = "em.";
+const CACHE_KEY = STORE_PREFIX + "data";
+
+const auth = {
+    token:   () => localStorage.getItem(STORE_PREFIX + "token") || "",
+    role:    () => localStorage.getItem(STORE_PREFIX + "role") || "",
+    isAdmin: () => auth.role() === "Admin"
+};
+
+/* =========================================================================
+   API — Content-Type header jaan-bujh kar set nahi kiya gaya (CORS preflight).
+   ========================================================================= */
+async function apiGet(action, params = {}) {
+    const query = new URLSearchParams({ action, token: auth.token(), ...params });
+    const response = await fetch(`${API_URL}?${query}`);
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+    return response.json();
+}
+
+async function apiPost(action, payload = {}) {
+    const response = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ action, token: auth.token(), ...payload })
+    });
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+    const result = await response.json();
+    if (result.status && result.status !== "success") throw new Error(result.message || "Request rejected");
+    return result;
+}
+
+/* =========================================================================
+   OUTPUT SAFETY
+   ========================================================================= */
+const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => HTML_ENTITIES[character]);
+}
+
+/* =========================================================================
+   PAGE STATE
+   ========================================================================= */
+const $ = id => document.getElementById(id);
+let participantRows = [];
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelector("[data-menu-toggle]").addEventListener("click", () => $("navLinks").classList.toggle("is-open"));
+
+    $("pType").addEventListener("change", handleTypeChange);
+    $("participantForm").addEventListener("submit", submitParticipant);
+    $("searchInput").addEventListener("input", renderTable);
+    $("pPhone").addEventListener("input", event => {
+        event.target.value = event.target.value.replace(/\D/g, "");
+    });
+
+    // Participants list sirf admin ko dikhti hai.
+    if (auth.isAdmin()) {
+        $("adminParticipantListSection").classList.remove("hidden");
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+            try { applyData(JSON.parse(cached)); } catch { localStorage.removeItem(CACHE_KEY); }
         }
+        loadData();
+    }
+});
 
-        function handleTypeChange() {
-            let type = document.getElementById("pType").value;
-            let nameLabel = document.getElementById("nameLabel");
-            let groupMembersGroup = document.getElementById("groupMembersGroup");
-            if(type === "Group") {
-                nameLabel.innerText = "Group Leader Name";
-                groupMembersGroup.style.display = "block";
-                document.getElementById("pGroupMembers").required = true;
-            } else {
-                nameLabel.innerText = "Participant Name";
-                groupMembersGroup.style.display = "none";
-                document.getElementById("pGroupMembers").required = false;
-            }
-        }
+function handleTypeChange() {
+    const isGroup = $("pType").value === "Group";
+    $("nameLabel").innerText = isGroup ? "Group Leader Name" : "Participant Name";
+    $("groupMembersGroup").classList.toggle("hidden", !isGroup);
+    $("pGroupMembers").required = isGroup;
+}
 
-        function fetchData() {
-            fetch(API_URL + "?action=getData")
-            .then(res => res.json())
-            .then(data => {
-                localStorage.setItem("eventManagerData", JSON.stringify(data));
-                renderParticipants(data);
-            }).catch(err => console.error(err));
-        }
+/* =========================================================================
+   DATA
+   ========================================================================= */
+async function loadData() {
+    try {
+        const data = await apiGet("getData");
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        applyData(data);
+    } catch (error) {
+        console.error("Participants load error:", error);
+    }
+}
 
-        function renderParticipants(data) {
-            let rows = data.Participants;
-            if(!rows) return;
-            globalParticipantRows = rows;
-            displayTableRows(rows);
-        }
+function applyData(data) {
+    participantRows = data.Participants || [];
+    renderTable();
+}
 
-        function displayTableRows(rows) {
-            let tbody = document.getElementById("participantTableBody");
-            if(!tbody) return;
-            tbody.innerHTML = "";
-            let hasRecord = false;
-            for(let i=1; i<rows.length; i++) {
-                let r = rows[i];
-                if(!r[0]) continue;
-                hasRecord = true;
-                
-                let name = r[0] || '-';
-                let branch = r[1] || '-';
-                let semester = r[2] || '-';
-                let event = r[3] || '-';
-                let phone = r[4] || '-';
-                let type = r[5] || 'Solo';
-                let groupMembers = r[6] || '';
+function renderTable() {
+    const body = $("participantTableBody");
+    if (!body) return;
+    const search = $("searchInput").value.toLowerCase();
 
-                let typeBadge = type === 'Group' ? `<span class="badge-group">Group</span>` : `<span class="badge-solo">Solo</span>`;
-                let displayName = `<b>${name}</b>`;
-                if(type === 'Group' && groupMembers) {
-                    displayName += `<br><small style="color:#64748b;">Members: ${groupMembers}</small>`;
-                }
+    const visible = participantRows.slice(1)
+        .filter(row => row[0])
+        .filter(row => [row[0], row[3], row[5], row[6]]
+            .map(value => String(value || "").toLowerCase())
+            .some(value => value.includes(search)));
 
-                tbody.innerHTML += `<tr>
-                    <td>${displayName}</td>
-                    <td>${typeBadge}</td>
-                    <td>${branch}</td>
-                    <td>${semester}</td>
-                    <td>${event}</td>
-                    <td>${phone || '-'}</td>
-                </tr>`;
-            }
-            if(!hasRecord) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b;">Koi participant nahi mila.</td></tr>`;
-            }
-        }
+    body.innerHTML = visible.length
+        ? visible.map(participantRow).join("")
+        : `<tr><td colspan="6" class="py-6 text-center text-ink-500">Koi participant nahi mila.</td></tr>`;
+}
 
-        function filterTable() {
-            let input = document.getElementById("searchInput").value.toLowerCase();
-            if(!globalParticipantRows.length) return;
-            let filteredRows = [globalParticipantRows[0]];
-            for(let i=1; i<globalParticipantRows.length; i++) {
-                let r = globalParticipantRows[i];
-                if(!r[0]) continue;
-                let name = (r[0] || "").toLowerCase();
-                let event = (r[3] || "").toLowerCase();
-                let type = (r[5] || "").toLowerCase();
-                let members = (r[6] || "").toLowerCase();
-                if(name.includes(input) || event.includes(input) || type.includes(input) || members.includes(input)) {
-                    filteredRows.push(r);
-                }
-            }
-            displayTableRows(filteredRows);
-        }
+function participantRow(row) {
+    const [name, branch, semester, event, phone, type, groupMembers] = row;
+    const isGroup = type === "Group";
 
-        function submitParticipant(e) {
-            e.preventDefault();
-            let phone = document.getElementById("pPhone").value;
-            if(phone.length !== 10) {
-                alert("Mobile number exact 10 digits ka hona chahiye!");
-                return;
-            }
+    const badge = isGroup
+        ? `<span class="badge badge-group">👥 Group</span>`
+        : `<span class="badge badge-solo">🙋 Solo</span>`;
 
-            let btn = document.getElementById("savePartBtn");
-            btn.innerText = "Registering...";
-            btn.disabled = true;
+    const members = isGroup && groupMembers
+        ? `<br><small class="text-ink-500">Members: ${escapeHtml(groupMembers)}</small>`
+        : "";
 
-            let type = document.getElementById("pType").value;
-            let payload = {
-                action: "addParticipant",
-                name: document.getElementById("pName").value,
-                branch: document.getElementById("pBranch").value,
-                semester: document.getElementById("pSemester").value,
-                event: document.getElementById("pEvent").value,
-                phone: phone,
-                type: type,
-                groupMembers: type === "Group" ? document.getElementById("pGroupMembers").value : ""
-            };
+    return `<tr>
+        <td class="font-semibold text-ink-900">${escapeHtml(name || "-")}${members}</td>
+        <td>${badge}</td>
+        <td>${escapeHtml(branch || "-")}</td>
+        <td>${escapeHtml(semester || "-")}</td>
+        <td>${escapeHtml(event || "-")}</td>
+        <td class="whitespace-nowrap">${escapeHtml(phone || "-")}</td>
+    </tr>`;
+}
 
-            fetch(API_URL, {method: "POST", body: JSON.stringify(payload)})
-            .then(res => res.json())
-            .then(data => {
-                alert("Registered Successfully!");
-                document.getElementById("participantForm").reset();
-                handleTypeChange();
-                btn.innerText = "Register Participant";
-                btn.disabled = false;
-                localStorage.removeItem("eventManagerData");
-                let isAdmin = localStorage.getItem("isAdmin") === "true";
-                if(isAdmin) { fetchData(); }
-            }).catch(err => {
-                alert("Error registering!");
-                btn.innerText = "Register Participant";
-                btn.disabled = false;
-            });
-        }
-    </script>
+/* =========================================================================
+   REGISTRATION
+   ========================================================================= */
+async function submitParticipant(event) {
+    event.preventDefault();
+    const phone = $("pPhone").value;
+    if (phone.length !== 10) {
+        alert("Mobile number exact 10 digits ka hona chahiye!");
+        return;
+    }
+
+    const button = $("savePartBtn");
+    button.disabled = true;
+    button.innerText = "Registering...";
+    try {
+        const type = $("pType").value;
+        await apiPost("addParticipant", {
+            name: $("pName").value,
+            branch: $("pBranch").value,
+            semester: $("pSemester").value,
+            event: $("pEvent").value,
+            phone,
+            type,
+            groupMembers: type === "Group" ? $("pGroupMembers").value : ""
+        });
+        alert("Registered Successfully!");
+        $("participantForm").reset();
+        handleTypeChange();
+        localStorage.removeItem(CACHE_KEY);
+        if (auth.isAdmin()) loadData();
+    } catch (error) {
+        console.error("Participant registration error:", error);
+        alert(error.message || "Error registering!");
+    } finally {
+        button.disabled = false;
+        button.innerText = "Register Participant →";
+    }
+}
+</script>
 </body>
 </html>

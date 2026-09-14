@@ -3,241 +3,347 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tasks & Programs - Event Manager</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background: #f4f6f9; color: #333; }
-        nav { background: #4f46e5; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: relative; }
-        nav .nav-brand { font-size: 18px; font-weight: bold; }
-        .menu-btn { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
-        nav ul { list-style: none; display: flex; gap: 12px; margin: 0; padding: 0; }
-        nav ul li a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; }
-        @media (max-width: 768px) {
-            .menu-btn { display: block; }
-            nav ul { display: none; flex-direction: column; width: 100%; position: absolute; top: 100%; left: 0; background: #4338ca; padding: 15px 20px; z-index: 1000; gap: 12px; }
-            nav ul.active { display: flex; }
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="theme-color" content="#7c3aed">
+    <title>Tasks &amp; Programs - Event Manager</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        /* ---- Festive Violet & Amber theme tokens ---- */
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand:  { 50:"#f5f3ff", 100:"#ede9fe", 200:"#ddd6fe", 300:"#c4b5fd", 400:"#a78bfa", 500:"#8b5cf6", 600:"#7c3aed", 700:"#6d28d9", 800:"#5b21b6", 900:"#4c1d95", DEFAULT:"#7c3aed" },
+                        accent: { 400:"#e879f9", 500:"#d946ef", 600:"#c026d3", DEFAULT:"#d946ef" },
+                        gold:   { 300:"#fcd34d", 400:"#fbbf24", 500:"#f59e0b", DEFAULT:"#fbbf24" },
+                        ink:    { 400:"#8b849f", 500:"#6b6485", 700:"#3f3a56", 900:"#1e1b2e" },
+                        canvas: "#faf7ff"
+                    },
+                    fontFamily: {
+                        sans:    ["Inter", '"Segoe UI"', "system-ui", "sans-serif"],
+                        display: ['"Plus Jakarta Sans"', '"Segoe UI"', "system-ui", "sans-serif"]
+                    },
+                    boxShadow: {
+                        soft: "0 1px 2px rgba(76,29,149,.04), 0 8px 24px -8px rgba(76,29,149,.14)",
+                        lift: "0 8px 16px -4px rgba(76,29,149,.12), 0 24px 48px -12px rgba(76,29,149,.24)",
+                        glow: "0 8px 20px -6px rgba(124,58,237,.45)"
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer components {
+            /* ---- Shell ---- */
+            .topbar    { @apply sticky top-0 z-40 bg-gradient-to-r from-brand-700 via-brand-600 to-accent-600 text-white shadow-lg shadow-brand-900/20; }
+            .brandmark { @apply font-display text-lg font-extrabold tracking-tight; }
+
+            /* ---- Navigation ---- */
+            .nav-links         { @apply absolute left-0 top-full z-50 hidden w-full flex-col gap-1 border-t border-white/15 bg-brand-700 p-3 shadow-xl md:static md:flex md:w-auto md:flex-row md:items-center md:gap-1 md:border-0 md:bg-transparent md:p-0 md:shadow-none; }
+            .nav-links.is-open { @apply flex; }
+            .nav-link          { @apply block rounded-lg px-3 py-2 text-[13px] font-semibold text-white/85 transition hover:bg-white/15 hover:text-white; }
+            .nav-link-active   { @apply bg-white/20 text-white; }
+
+            /* ---- Cards ---- */
+            .card               { @apply mb-5 rounded-2xl border border-brand-100 bg-white p-5 shadow-soft md:p-6; }
+            .card-title         { @apply mb-4 flex items-center gap-2.5 font-display text-base font-bold text-ink-900; }
+            .card-title::before { content: ""; @apply block h-5 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-brand-500 to-accent-500; }
+            .muted              { @apply text-[13px] text-ink-500; }
+
+            /* ---- Forms ---- */
+            .field-label { @apply mb-1.5 block text-[13px] font-semibold text-ink-700; }
+            .input       { @apply w-full rounded-xl border border-brand-100 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm outline-none transition placeholder:text-ink-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/15; }
+
+            /* ---- Buttons ---- */
+            .btn         { @apply inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-accent-600 px-4 py-2.5 text-sm font-bold text-white shadow-glow transition hover:brightness-110 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none; }
+            .btn-sm      { @apply w-auto rounded-lg px-2.5 py-1.5 text-[11px]; }
+            .btn-success { @apply bg-gradient-to-r from-emerald-500 to-teal-600 shadow-none; }
+
+            /* ---- Tables ---- */
+            .table-shell         { @apply overflow-x-auto rounded-xl border border-brand-100; }
+            .data-table          { @apply w-full border-collapse whitespace-nowrap text-left text-[13px]; }
+            .data-table th       { @apply bg-brand-50 px-3 py-3 font-display text-[11px] font-bold uppercase tracking-wider text-brand-800; }
+            .data-table td       { @apply border-t border-brand-100 px-3 py-3 text-ink-700; }
+            .data-table tbody tr { @apply transition hover:bg-brand-50/60; }
+
+            /* ---- Badges ---- */
+            .badge           { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1; }
+            .badge-completed { @apply bg-emerald-50 text-emerald-700 ring-emerald-200; }
+            .badge-pending   { @apply bg-rose-50 text-rose-700 ring-rose-200; }
         }
-        .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
-        .box { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        h2 { color: #4f46e5; font-size: 16px; margin-bottom: 12px; }
-        .form-group { margin-bottom: 10px; }
-        label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; }
-        input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
-        button { background: #4f46e5; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; }
-        .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; text-align: left; white-space: nowrap; }
-        th, td { padding: 10px 8px; border-bottom: 1px solid #eee; }
-        th { background: #f8fafc; color: #475569; font-weight: 600; }
-        .search-box { margin-bottom: 15px; }
-        .badge-completed { background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
-        .badge-pending { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
-        .complete-btn { background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; }
     </style>
 </head>
-<body>
-    <nav>
-        <div class="nav-brand">🎓 Event Manager</div>
-        <button class="menu-btn" onclick="toggleMenu()">☰</button>
-        <ul id="navLinks">
-            <li><a href="index.html">Dashboard</a></li>
-            <li><a href="collection-entry.html">Collection</a></li>
-            <li><a href="expenses.html">Expenses</a></li>
-            <li><a href="tasks.html" style="font-weight:bold;">Tasks & Programs</a></li>
-            <li><a href="participants.html">Participants</a></li>
-            <li><a href="access.html">Access Control</a></li>
-        </ul>
+<body class="bg-canvas font-sans text-ink-900">
+
+    <nav class="topbar">
+        <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
+            <div class="brandmark">🎓 Event Manager</div>
+            <button type="button" data-menu-toggle class="cursor-pointer rounded-lg p-1 text-2xl leading-none transition hover:bg-white/15 md:hidden" aria-label="Menu">☰</button>
+            <ul id="navLinks" class="nav-links">
+                <li><a href="index.html" class="nav-link">Dashboard</a></li>
+                <li><a href="collection-entry.html" class="nav-link">Collection</a></li>
+                <li><a href="expenses.html" class="nav-link">Expenses</a></li>
+                <li><a href="tasks.html" class="nav-link nav-link-active">Tasks &amp; Programs</a></li>
+                <li><a href="participants.html" class="nav-link">Participants</a></li>
+                <li><a href="access.html" class="nav-link">Access Control</a></li>
+            </ul>
+        </div>
     </nav>
-    <div class="container">
+
+    <div class="mx-auto max-w-5xl px-4 py-6">
+
+        <div class="mb-5 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-700 via-brand-600 to-accent-600 p-6 text-white shadow-lift md:p-8">
+            <h1 class="font-display text-2xl font-extrabold md:text-3xl">📋 Tasks &amp; Programs</h1>
+            <p class="mt-1.5 text-sm text-white/85">Event ke sabhi programs aur duties ek jagah</p>
+        </div>
+
         <!-- Add Task Box (Admin Only) -->
-        <div class="box" id="adminTaskBox" style="display: none;">
-            <h2>📌 Add Task / Program (Admin Only)</h2>
-            <form id="taskForm" onsubmit="submitTask(event)">
-                <div class="form-group">
-                    <label>Task / Program Title</label>
-                    <input type="text" id="tTitle" required placeholder="Jaise: Dance Performance">
+        <div class="card hidden" id="adminTaskBox">
+            <h2 class="card-title">📌 Add Task / Program (Admin Only)</h2>
+            <form id="taskForm" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div class="md:col-span-2">
+                    <label class="field-label" for="tTitle">Task / Program Title</label>
+                    <input type="text" id="tTitle" class="input" maxlength="200" required placeholder="Jaise: Dance Performance">
                 </div>
-                <div class="form-group">
-                    <label>Type</label>
-                    <select id="tType">
+                <div>
+                    <label class="field-label" for="tType">Type</label>
+                    <select id="tType" class="input">
                         <option value="Performance">Performance</option>
                         <option value="Task">Task / Duty</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <select id="tStatus">
+                <div>
+                    <label class="field-label" for="tStatus">Status</label>
+                    <select id="tStatus" class="input">
                         <option value="Pending">Pending</option>
                         <option value="Completed">Completed</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Time Slot</label>
-                    <input type="text" id="tTime" placeholder="Jaise: 11:00 AM">
+                <div class="md:col-span-2">
+                    <label class="field-label" for="tTime">Time Slot</label>
+                    <input type="text" id="tTime" class="input" maxlength="40" placeholder="Jaise: 11:00 AM">
                 </div>
-                <button type="submit" id="saveTaskBtn">Save Task</button>
+                <div class="md:col-span-2">
+                    <button type="submit" id="saveTaskBtn" class="btn">Save Task</button>
+                </div>
             </form>
         </div>
 
         <!-- Task List Box -->
-        <div class="box">
-            <h2>📋 Tasks & Programs List</h2>
-            <div class="search-box">
-                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="🔍 Title ya Type se search karein...">
+        <div class="card">
+            <h2 class="card-title">📋 Tasks &amp; Programs List</h2>
+            <div class="mb-4">
+                <input type="text" id="searchInput" class="input" placeholder="🔍 Title ya Type se search karein...">
             </div>
-            <div class="table-responsive">
-                <table>
+            <div class="table-shell">
+                <table class="data-table">
                     <thead>
                         <tr>
                             <th>Title</th>
                             <th>Type</th>
                             <th>Status</th>
                             <th>Time</th>
-                            <th id="actionHeader" style="display:none;">Action</th>
+                            <th id="actionHeader" class="hidden">Action</th>
                         </tr>
                     </thead>
                     <tbody id="taskTableBody">
-                        <tr><td colspan="5" style="text-align:center;">Loading data...</td></tr>
+                        <tr><td colspan="5" class="py-6 text-center">Loading data...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbynen3fhejkRkM6x1lZV1ele__6PPURLFp1Z1qz1U7VfORsY3cySGkMOPi4LpJfkZf8/exec";
-        let globalTaskRows = [];
-        let isAdmin = false;
+<script>
+/* =========================================================================
+   CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
+   ========================================================================= */
+const API_URL = "https://script.google.com/macros/s/AKfycbyNBHtt7SsOhtHEphfazBxScg-nEr9yG89RnT4bfbagNbWGs6H9E1fRR-Q54J1JTEGe/exec";
 
-        function toggleMenu() { document.getElementById("navLinks").classList.toggle("active"); }
+/* =========================================================================
+   SESSION — sirf UI ke liye; asli permission Apps Script me check hoti hai.
+   ========================================================================= */
+const STORE_PREFIX = "em.";
+const CACHE_KEY = STORE_PREFIX + "data";
 
-        window.onload = function() {
-            isAdmin = localStorage.getItem("isAdmin") === "true";
-            if(isAdmin) { 
-                document.getElementById("adminTaskBox").style.display = "block"; 
-                document.getElementById("actionHeader").style.display = "table-cell";
-            }
-            
-            let cached = localStorage.getItem("eventManagerData");
-            if(cached) { renderTasks(JSON.parse(cached)); }
-            fetchData();
-        }
+const auth = {
+    token:   () => localStorage.getItem(STORE_PREFIX + "token") || "",
+    role:    () => localStorage.getItem(STORE_PREFIX + "role") || "",
+    isAdmin: () => auth.role() === "Admin"
+};
 
-        function fetchData() {
-            fetch(API_URL + "?action=getData")
-            .then(res => res.json())
-            .then(data => {
-                localStorage.setItem("eventManagerData", JSON.stringify(data));
-                renderTasks(data);
-            }).catch(err => console.error(err));
-        }
+/* =========================================================================
+   API — Content-Type header jaan-bujh kar set nahi kiya gaya (CORS preflight).
+   ========================================================================= */
+async function apiGet(action, params = {}) {
+    const query = new URLSearchParams({ action, token: auth.token(), ...params });
+    const response = await fetch(`${API_URL}?${query}`);
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+    return response.json();
+}
 
-        function renderTasks(data) {
-            let rows = data.Tasks;
-            if(!rows) return;
-            globalTaskRows = rows;
-            displayTableRows(rows);
-        }
+async function apiPost(action, payload = {}) {
+    const response = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ action, token: auth.token(), ...payload })
+    });
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+    const result = await response.json();
+    if (result.status && result.status !== "success") throw new Error(result.message || "Request rejected");
+    return result;
+}
 
-        function displayTableRows(rows) {
-            let tbody = document.getElementById("taskTableBody");
-            tbody.innerHTML = "";
-            let hasRecord = false;
-            
-            for(let i=1; i<rows.length; i++) {
-                let r = rows[i];
-                if(!r[0]) continue;
-                hasRecord = true;
-                
-                let title = r[0] || '-';
-                let type = r[1] || '-';
-                let rawStatus = r[2] || 'Pending';
-                let statusBadge = rawStatus === 'Completed' ? `<span class="badge-completed">Completed</span>` : `<span class="badge-pending">Pending</span>`;
-                let time = r[3] || '-';
-                
-                let actionCol = '';
-                if(isAdmin) {
-                    if(rawStatus === 'Pending') {
-                        actionCol = `<td><button class="complete-btn" onclick="markCompleted('${title}')">Mark Completed</button></td>`;
-                    } else {
-                        actionCol = `<td>-</td>`;
-                    }
-                }
+/* =========================================================================
+   OUTPUT SAFETY
+   ========================================================================= */
+const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
-                tbody.innerHTML += `<tr>
-                    <td><b>${title}</b></td>
-                    <td>${type}</td>
-                    <td>${statusBadge}</td>
-                    <td>${time}</td>
-                    ${isAdmin ? actionCol : ''}
-                </tr>`;
-            }
-            if(!hasRecord) {
-                let colSpanCount = isAdmin ? 5 : 4;
-                tbody.innerHTML = `<tr><td colspan="${colSpanCount}" style="text-align:center; color:#64748b; padding: 15px;">Koi task nahi mila.</td></tr>`;
-            }
-        }
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => HTML_ENTITIES[character]);
+}
 
-        function markCompleted(title) {
-            if(!confirm(`Kya aap "${title}" ko completed mark karna chahte hain?`)) return;
+/* =========================================================================
+   PAGE STATE
+   ========================================================================= */
+const $ = id => document.getElementById(id);
+let taskRows = [];
 
-            let payload = {
-                action: "updateTaskStatus",
-                title: title
-            };
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelector("[data-menu-toggle]").addEventListener("click", () => $("navLinks").classList.toggle("is-open"));
 
-            fetch(API_URL, {method: "POST", body: JSON.stringify(payload)})
-            .then(res => res.json())
-            .then(data => {
-                alert("Task status updated successfully!");
-                localStorage.removeItem("eventManagerData");
-                fetchData();
-            }).catch(err => {
-                alert("Error updating status!");
-            });
-        }
+    if (auth.isAdmin()) {
+        $("adminTaskBox").classList.remove("hidden");
+        $("actionHeader").classList.remove("hidden");
+    }
 
-        function filterTable() {
-            let input = document.getElementById("searchInput").value.toLowerCase();
-            if(!globalTaskRows.length) return;
-            let filteredRows = [globalTaskRows[0]];
-            for(let i=1; i<globalTaskRows.length; i++) {
-                let r = globalTaskRows[i];
-                if(!r[0]) continue;
-                if(r[0].toLowerCase().includes(input) || r[1].toLowerCase().includes(input)) {
-                    filteredRows.push(r);
-                }
-            }
-            displayTableRows(filteredRows);
-        }
+    $("taskForm").addEventListener("submit", submitTask);
+    $("searchInput").addEventListener("input", renderTable);
 
-        function submitTask(e) {
-            e.preventDefault();
-            let btn = document.getElementById("saveTaskBtn");
-            btn.innerText = "Saving...";
-            btn.disabled = true;
+    // "Mark Completed" button event delegation se — task ka title kabhi inline
+    // onclick me nahi jata, isliye sheet ka text code ki tarah run nahi ho sakta.
+    $("taskTableBody").addEventListener("click", event => {
+        const button = event.target.closest("[data-complete]");
+        if (button) markCompleted(button.dataset.complete);
+    });
 
-            let payload = {
-                action: "addTask",
-                title: document.getElementById("tTitle").value,
-                type: document.getElementById("tType").value,
-                status: document.getElementById("tStatus").value,
-                time: document.getElementById("tTime").value
-            };
-            fetch(API_URL, {method: "POST", body: JSON.stringify(payload)})
-            .then(res => res.json())
-            .then(data => {
-                alert("Saved Successfully!");
-                document.getElementById("taskForm").reset();
-                btn.innerText = "Save Task";
-                btn.disabled = false;
-                localStorage.removeItem("eventManagerData");
-                fetchData();
-            }).catch(err => {
-                alert("Error saving!");
-                btn.innerText = "Save Task";
-                btn.disabled = false;
-            });
-        }
-    </script>
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+        try { applyData(JSON.parse(cached)); } catch { localStorage.removeItem(CACHE_KEY); }
+    }
+    loadData();
+});
+
+/* =========================================================================
+   DATA
+   ========================================================================= */
+async function loadData() {
+    try {
+        const data = await apiGet("getData");
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheableCopy(data)));
+        applyData(data);
+    } catch (error) {
+        console.error("Tasks load error:", error);
+    }
+}
+
+/** Logged-out visitor ke browser me participants ka personal data cache nahi karte. */
+function cacheableCopy(data) {
+    if (auth.role()) return data;
+    const copy = { ...data };
+    delete copy.Participants;
+    return copy;
+}
+
+function applyData(data) {
+    taskRows = data.Tasks || [];
+    renderTable();
+}
+
+function renderTable() {
+    const isAdmin = auth.isAdmin();
+    const search = $("searchInput").value.toLowerCase();
+
+    const visible = taskRows.slice(1)
+        .filter(row => row[0])
+        .filter(row => [row[0], row[1]]
+            .map(value => String(value || "").toLowerCase())
+            .some(value => value.includes(search)));
+
+    $("taskTableBody").innerHTML = visible.length
+        ? visible.map(row => taskRow(row, isAdmin)).join("")
+        : `<tr><td colspan="${isAdmin ? 5 : 4}" class="py-6 text-center text-ink-500">Koi task nahi mila.</td></tr>`;
+}
+
+function taskRow(row, isAdmin) {
+    const [title, type, rawStatus, time] = row;
+    const isCompleted = rawStatus === "Completed";
+
+    const badge = isCompleted
+        ? `<span class="badge badge-completed">✓ Completed</span>`
+        : `<span class="badge badge-pending">● Pending</span>`;
+
+    let action = "";
+    if (isAdmin) {
+        action = isCompleted
+            ? `<td class="text-ink-400">-</td>`
+            : `<td><button type="button" class="btn btn-sm btn-success" data-complete="${escapeHtml(title)}">Mark Completed</button></td>`;
+    }
+
+    return `<tr>
+        <td class="font-semibold text-ink-900">${escapeHtml(title || "-")}</td>
+        <td>${escapeHtml(type || "-")}</td>
+        <td>${badge}</td>
+        <td class="text-ink-500">${escapeHtml(time || "-")}</td>
+        ${action}
+    </tr>`;
+}
+
+/* =========================================================================
+   ACTIONS
+   ========================================================================= */
+async function markCompleted(title) {
+    if (!confirm(`Kya aap "${title}" ko completed mark karna chahte hain?`)) return;
+    try {
+        await apiPost("updateTaskStatus", { title });
+        alert("Task status updated successfully!");
+        localStorage.removeItem(CACHE_KEY);
+        loadData();
+    } catch (error) {
+        console.error("Task status error:", error);
+        alert(error.message || "Error updating status!");
+    }
+}
+
+async function submitTask(event) {
+    event.preventDefault();
+    const button = $("saveTaskBtn");
+    button.disabled = true;
+    button.innerText = "Saving...";
+    try {
+        await apiPost("addTask", {
+            title: $("tTitle").value,
+            type: $("tType").value,
+            status: $("tStatus").value,
+            time: $("tTime").value
+        });
+        alert("Saved Successfully!");
+        $("taskForm").reset();
+        localStorage.removeItem(CACHE_KEY);
+        loadData();
+    } catch (error) {
+        console.error("Task save error:", error);
+        alert(error.message || "Error saving!");
+    } finally {
+        button.disabled = false;
+        button.innerText = "Save Task";
+    }
+}
+</script>
 </body>
 </html>

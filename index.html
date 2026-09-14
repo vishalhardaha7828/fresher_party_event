@@ -256,7 +256,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbyNBHtt7SsOhtHEphfazBxScg-nEr9yG89RnT4bfbagNbWGs6H9E1fRR-Q54J1JTEGe/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzvQUM0XENSqaNghHCLltg7EkY52Jivo2my_QrEfq1vHK9_JVd-idW6T5xr1IP0tjn4/exec";
 
 /* Hero carousel ki photos — nayi photo add karni ho to bas yahan ek line add karein. */
 const HERO_SLIDES = [
@@ -311,6 +311,19 @@ const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "
 
 function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => HTML_ENTITIES[character]);
+}
+
+function formatDateOnly(value) {
+    const raw = String(value ?? "").trim();
+    if (!raw) return "-";
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00`) : new Date(raw);
+    return Number.isNaN(date.getTime()) ? raw : date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" });
+}
+
+function formatDateTime(value) {
+    const date = new Date(value);
+    if (!value || Number.isNaN(date.getTime())) return String(value || "-");
+    return `${date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`;
 }
 
 /** Sirf http/https links allow karta hai; `javascript:` jaise URLs block ho jate hain. */
@@ -497,7 +510,7 @@ function renderMeetings(data) {
     }
     container.innerHTML = rows.slice(1).reverse().filter(row => row[0]).map(row => `
         <div class="mb-3 rounded-xl border border-brand-100 border-l-4 border-l-brand-500 bg-gradient-to-r from-brand-50/70 to-white p-4">
-            <p class="text-[13px] font-bold text-brand-800">📅 ${escapeHtml(row[0])}</p>
+            <p class="text-[13px] font-bold text-brand-800">📅 ${escapeHtml(formatDateOnly(row[0]))}</p>
             <p class="mt-1 text-[13px] leading-relaxed text-ink-700">💡 ${escapeHtml(row[1])}</p>
         </div>`).join("");
 }
@@ -594,7 +607,7 @@ async function loadFeedbackList() {
         }
 
         const rows = feedbacks.map(feedback => {
-            const stamp = feedback.timestamp ? new Date(feedback.timestamp).toLocaleString() : "";
+            const stamp = formatDateTime(feedback.timestamp);
             return `<tr>
                 <td><input type="checkbox" class="feedback-checkbox h-4 w-4 accent-brand-600" value="${escapeHtml(feedback.rowIndex)}"></td>
                 <td class="font-semibold text-ink-900">${escapeHtml(feedback.name)}</td>

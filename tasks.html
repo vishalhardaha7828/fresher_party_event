@@ -130,6 +130,10 @@
                     <input type="text" id="tTime" class="input" maxlength="40" placeholder="Jaise: 11:00 AM">
                 </div>
                 <div class="md:col-span-2">
+                    <label class="field-label" for="tResponsible">Responsible Person</label>
+                    <input type="text" id="tResponsible" class="input" maxlength="120" required placeholder="Jaise: Rahul Sharma">
+                </div>
+                <div class="md:col-span-2">
                     <button type="submit" id="saveTaskBtn" class="btn">Save Task</button>
                 </div>
             </form>
@@ -149,11 +153,12 @@
                             <th>Type</th>
                             <th>Status</th>
                             <th>Time</th>
+                            <th>Responsible Person</th>
                             <th id="actionHeader" class="hidden">Action</th>
                         </tr>
                     </thead>
                     <tbody id="taskTableBody">
-                        <tr><td colspan="5" class="py-6 text-center">Loading data...</td></tr>
+                        <tr><td colspan="6" class="py-6 text-center">Loading data...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -164,7 +169,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbyNBHtt7SsOhtHEphfazBxScg-nEr9yG89RnT4bfbagNbWGs6H9E1fRR-Q54J1JTEGe/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzvQUM0XENSqaNghHCLltg7EkY52Jivo2my_QrEfq1vHK9_JVd-idW6T5xr1IP0tjn4/exec";
 
 /* =========================================================================
    SESSION — sirf UI ke liye; asli permission Apps Script me check hoti hai.
@@ -206,6 +211,14 @@ const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "
 
 function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => HTML_ENTITIES[character]);
+}
+
+function formatTaskTime(value) {
+    const raw = String(value ?? "").trim();
+    if (!raw) return "-";
+    if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(raw)) return raw.toUpperCase();
+    const date = new Date(raw);
+    return Number.isNaN(date.getTime()) ? raw : date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
 }
 
 /* =========================================================================
@@ -271,17 +284,17 @@ function renderTable() {
 
     const visible = taskRows.slice(1)
         .filter(row => row[0])
-        .filter(row => [row[0], row[1]]
+        .filter(row => [row[0], row[1], row[4]]
             .map(value => String(value || "").toLowerCase())
             .some(value => value.includes(search)));
 
     $("taskTableBody").innerHTML = visible.length
         ? visible.map(row => taskRow(row, isAdmin)).join("")
-        : `<tr><td colspan="${isAdmin ? 5 : 4}" class="py-6 text-center text-ink-500">Koi task nahi mila.</td></tr>`;
+        : `<tr><td colspan="${isAdmin ? 6 : 5}" class="py-6 text-center text-ink-500">Koi task nahi mila.</td></tr>`;
 }
 
 function taskRow(row, isAdmin) {
-    const [title, type, rawStatus, time] = row;
+    const [title, type, rawStatus, time, responsible] = row;
     const isCompleted = rawStatus === "Completed";
 
     const badge = isCompleted
@@ -299,7 +312,8 @@ function taskRow(row, isAdmin) {
         <td class="font-semibold text-ink-900">${escapeHtml(title || "-")}</td>
         <td>${escapeHtml(type || "-")}</td>
         <td>${badge}</td>
-        <td class="text-ink-500">${escapeHtml(time || "-")}</td>
+        <td class="text-ink-500">${escapeHtml(formatTaskTime(time))}</td>
+        <td>${escapeHtml(responsible || "-")}</td>
         ${action}
     </tr>`;
 }
@@ -330,7 +344,8 @@ async function submitTask(event) {
             title: $("tTitle").value,
             type: $("tType").value,
             status: $("tStatus").value,
-            time: $("tTime").value
+            time: $("tTime").value,
+            responsible: $("tResponsible").value
         });
         alert("Saved Successfully!");
         $("taskForm").reset();

@@ -175,7 +175,7 @@
                     <thead>
                         <tr>
                             <th>Name</th><th>Branch</th><th>Semester</th><th>Category</th>
-                            <th>Amount</th><th>Mode</th><th>Timestamp</th>
+                            <th>Amount</th><th>Mode</th><th>Date / Time</th>
                             <th id="actionsHeader" class="hidden">Actions</th>
                         </tr>
                     </thead>
@@ -189,7 +189,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbyNBHtt7SsOhtHEphfazBxScg-nEr9yG89RnT4bfbagNbWGs6H9E1fRR-Q54J1JTEGe/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzvQUM0XENSqaNghHCLltg7EkY52Jivo2my_QrEfq1vHK9_JVd-idW6T5xr1IP0tjn4/exec";
 const QR_URL = "https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&sz=w1000";
 
 /* =========================================================================
@@ -236,6 +236,12 @@ const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "
 
 function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => HTML_ENTITIES[character]);
+}
+
+function formatDateTime(value) {
+    const date = new Date(value);
+    if (!value || Number.isNaN(date.getTime())) return String(value || "-");
+    return `${date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`;
 }
 
 /* =========================================================================
@@ -372,7 +378,7 @@ function recordRow(row, index, isAdmin) {
         <td>${escapeHtml(row[3] || "-")}</td>
         <td class="whitespace-nowrap font-bold text-emerald-700">₹ ${escapeHtml(row[4] || 0)}</td>
         <td>${escapeHtml(row[5] || "-")}</td>
-        <td class="whitespace-nowrap text-ink-500">${escapeHtml(row[6] || "-")}</td>
+        <td class="whitespace-nowrap text-ink-500">${escapeHtml(formatDateTime(row[6]))}</td>
         ${actions}
     </tr>`;
 }

@@ -36,6 +36,8 @@ const ALLOWED_UPLOAD_TYPES = /^(image|video)\//i;
 const ACTION_ROLES = {
   getFeedback: ["Admin"],
   deleteFeedback: ["Admin"],
+  updateParticipantOrder: ["Admin"],
+  completeParticipant: ["Admin"],
   approveVolunteer: ["Admin"],
   updateVolunteer: ["Admin"],
   deleteVolunteer: ["Admin"],
@@ -294,6 +296,8 @@ function doPost(e) {
       case "updateExpense": return saveExpense(data, true);
       case "deleteExpense": return deleteRow("Expenses", data.rowIndex);
       case "addParticipant": return addParticipant(data);
+      case "updateParticipantOrder": return updateParticipantOrder(data);
+      case "completeParticipant": return completeParticipant(data);
       case "addTask": return addTask(data);
       case "updateTaskStatus": return updateTaskStatus(data.title);
       case "addMeeting": return addMeeting(data);
@@ -456,11 +460,75 @@ function deleteVolunteer(data) {
 
 function getData() {
   const result = {};
+  ensureParticipantSheet();
+  ensureTaskSheet();
   ["Collection", "Expenses", "Participants", "Tasks", "Meetings", "Settings"].forEach(name => {
     const current = sheet(name);
     if (current) result[name] = current.getDataRange().getValues();
   });
   return json(result);
+}
+
+function ensureParticipantSheet() {
+  let current = sheet("Participants");
+  if (!current) return null;
+
+  let headers = headersOf(current);
+  let statusIndex = col(headers, ["Program Status", "Status"]);
+  let timestampIndex = col(headers, ["Timestamp", "Created At", "Date"]);
+  let orderIndex = col(headers, ["Program Order", "Order", "Sequence"]);
+
+  if (timestampIndex < 0) {
+    const insertAt = statusIndex >= 0 ? statusIndex + 1 : current.getLastColumn() + 1;
+    current.insertColumnBefore(insertAt);
+    current.getRange(1, insertAt).setValue("Timestamp");
+  }
+
+  headers = headersOf(current);
+  statusIndex = col(headers, ["Program Status", "Status"]);
+  orderIndex = col(headers, ["Program Order", "Order", "Sequence"]);
+  if (orderIndex < 0) {
+    const insertAt = statusIndex >= 0 ? statusIndex + 1 : current.getLastColumn() + 1;
+    current.insertColumnBefore(insertAt);
+    current.getRange(1, insertAt).setValue("Program Order");
+    orderIndex = insertAt - 1;
+    const rowCount = current.getLastRow() - 1;
+    if (rowCount > 0) {
+      current.getRange(2, insertAt, rowCount, 1)
+        .setValues(Array.from({ length: rowCount }, (_, index) => [index + 1]));
+    }
+  }
+
+  headers = headersOf(current);
+  statusIndex = col(headers, ["Program Status", "Status"]);
+  if (statusIndex < 0) {
+    const insertAt = current.getLastColumn() + 1;
+    current.insertColumnAfter(current.getLastColumn());
+    current.getRange(1, insertAt).setValue("Program Status");
+    const rowCount = current.getLastRow() - 1;
+    if (rowCount > 0) {
+      current.getRange(2, insertAt, rowCount, 1)
+        .setValues(Array.from({ length: rowCount }, () => ["Pending"]));
+    }
+  }
+  normalizeParticipantOrder(current);
+  return current;
+}
+
+function normalizeParticipantOrder(current) {
+  const headers = headersOf(current);
+  const orderIndex = col(headers, ["Program Order", "Order", "Sequence"]);
+  const statusIndex = col(headers, ["Program Status", "Status"]);
+  if (orderIndex < 0 || current.getLastRow() < 2) return;
+
+  const rows = current.getDataRange().getValues().slice(1)
+    .map((row, index) => ({
+      sheetRow: index + 2,
+      order: Number(row[orderIndex]) || index + 1,
+      status: statusIndex >= 0 ? String(row[statusIndex] || "Pending") : "Pending"
+    }))
+    .sort((left, right) => (left.status === "Completed") - (right.status === "Completed") || left.order - right.order);
+  rows.forEach((item, index) => current.getRange(item.sheetRow, orderIndex + 1).setValue(index + 1));
 }
 
 function getMedia() {
@@ -472,6 +540,54 @@ function getMedia() {
     type: row[2] || "Photo"
   }));
   return ok({ media: media });
+}
+
+function ensureTaskSheet() {
+  let current = sheet("Tasks");
+  if (!current) {
+    current = SPREADSHEET.insertSheet("Tasks");
+    current.appendRow(["Title", "Type", "Status", "Time", "Responsible Person", "Timestamp"]);
+    return current;
+  }
+
+  const headers = headersOf(current);
+  if (col(headers, ["Responsible Person", "Responsible", "Assigned To"]) < 0) {
+    const timestampIndex = col(headers, ["Timestamp", "Created At", "Date"]);
+    const secondTimestamp = String(headers[5] || "").toLowerCase().replace(/\s/g, "") === "timestamp";
+    if (timestampIndex === 4 && secondTimestamp) {
+      if (current.getLastRow() >= 2) {
+        const rows = current.getRange(2, 5, current.getLastRow() - 1, 2).getValues();
+        rows.forEach(row => {
+          if (!row[1] && row[0]) row[1] = row[0];
+          row[0] = "";
+        });
+        current.getRange(2, 5, rows.length, 2).setValues(rows);
+      }
+    } else if (timestampIndex === 4) {
+      current.insertColumnBefore(5);
+    } else if (current.getLastColumn() < 5) {
+      current.insertColumnAfter(Math.max(current.getLastColumn(), 1));
+    }
+    current.getRange(1, 5).setValue("Responsible Person");
+  }
+  if (current.getLastColumn() < 6) current.insertColumnAfter(5);
+  current.getRange(1, 6).setValue("Timestamp");
+  while (current.getLastColumn() > 6) {
+    const latestHeaders = headersOf(current);
+    const lastHeader = String(latestHeaders[latestHeaders.length - 1] || "").toLowerCase().replace(/\s/g, "");
+    if (lastHeader !== "timestamp") break;
+    const lastRow = current.getLastRow();
+    if (lastRow >= 2) {
+      const rows = current.getRange(2, 6, lastRow - 1, 2).getValues();
+      rows.forEach(row => {
+        if (!row[0] && row[1]) row[0] = row[1];
+        row[1] = "";
+      });
+      current.getRange(2, 6, rows.length, 2).setValues(rows);
+    }
+    current.deleteColumn(current.getLastColumn());
+  }
+  return current;
 }
 
 // ---------------------------------------------------------------------------
@@ -582,7 +698,20 @@ function addParticipant(data) {
   if (!name) return fail("Naam zaroori hai.");
   if (!phone) return fail("Phone number exact 10 digits ka hona chahiye.");
 
-  return addRow("Participants", [
+  const current = ensureParticipantSheet() || sheet("Participants");
+  if (!current) {
+    const created = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Participants");
+    created.appendRow(["Name", "Branch", "Semester", "Event", "Phone", "Type", "Group Members", "Timestamp", "Program Order"]);
+    return addParticipant(data);
+  }
+  normalizeParticipantOrder(current);
+  const headers = headersOf(current);
+  const orderIndex = col(headers, ["Program Order", "Order", "Sequence"]);
+  const existingOrders = current.getLastRow() >= 2
+      ? current.getRange(2, orderIndex + 1, current.getLastRow() - 1, 1).getValues().flat().map(Number).filter(isFinite)
+      : [];
+  const nextOrder = (existingOrders.length ? Math.max.apply(null, existingOrders) : 0) + 1;
+  current.appendRow([
     name,
     text(data.branch, 40),
     text(data.semester, 20),
@@ -590,20 +719,81 @@ function addParticipant(data) {
     phone,
     text(data.type, 20) || "Solo",
     text(data.groupMembers, 500),
-    new Date()
+    new Date(),
+    nextOrder,
+    "Pending"
   ]);
+  return ok();
+}
+
+function completeParticipant(data) {
+  const current = ensureParticipantSheet();
+  const requestedPhone = phoneOf(data.phone);
+  if (!current || !requestedPhone) return fail("Participant phone number required");
+
+  const headers = headersOf(current);
+  const phoneIndex = col(headers, ["Phone", "Phone Number"]);
+  const orderIndex = col(headers, ["Program Order", "Order", "Sequence"]);
+  const statusIndex = col(headers, ["Program Status", "Status"]);
+  if (phoneIndex < 0 || orderIndex < 0 || statusIndex < 0) return fail("Participant columns not found");
+
+  const rows = current.getDataRange().getValues();
+  const rowNumber = rows.findIndex((row, index) => index > 0 && phoneOf(row[phoneIndex]) === requestedPhone) + 1;
+  if (rowNumber < 2) return fail("Participant not found");
+  current.getRange(rowNumber, statusIndex + 1).setValue("Completed");
+
+  const orderedRows = current.getDataRange().getValues().slice(1)
+    .map((row, index) => ({
+      row,
+      sheetRow: index + 2,
+      order: Number(row[orderIndex]) || index + 1,
+      status: String(row[statusIndex] || "Pending")
+    }))
+    .sort((left, right) => (left.status === "Completed") - (right.status === "Completed") || left.order - right.order);
+  orderedRows.forEach((item, index) => current.getRange(item.sheetRow, orderIndex + 1).setValue(index + 1));
+  return ok();
+}
+
+function updateParticipantOrder(data) {
+  const current = ensureParticipantSheet();
+  const requestedPhone = phoneOf(data.phone);
+  const direction = String(data.direction || "");
+  if (!current || !requestedPhone || !["up", "down"].includes(direction)) return fail("Invalid participant order request");
+
+  const headers = headersOf(current);
+  const orderIndex = col(headers, ["Program Order", "Order", "Sequence"]);
+  const phoneIndex = col(headers, ["Phone", "Phone Number"]);
+  const statusIndex = col(headers, ["Program Status", "Status"]);
+  if (orderIndex < 0 || phoneIndex < 0) return fail("Participant order columns not found");
+
+  const rows = current.getDataRange().getValues().slice(1)
+    .map((row, index) => ({ row, sheetRow: index + 2, order: Number(row[orderIndex]) || index + 1, status: String(row[statusIndex] || "Pending") }))
+    .sort((left, right) => (left.status === "Completed") - (right.status === "Completed") || left.order - right.order);
+  const currentPosition = rows.findIndex(item => phoneOf(item.row[phoneIndex]) === requestedPhone);
+  if (currentPosition < 0) return fail("Participant not found");
+  const targetPosition = direction === "up" ? currentPosition - 1 : currentPosition + 1;
+  if (targetPosition < 0 || targetPosition >= rows.length) return ok();
+
+  [rows[currentPosition], rows[targetPosition]] = [rows[targetPosition], rows[currentPosition]];
+  rows.forEach((item, index) => current.getRange(item.sheetRow, orderIndex + 1).setValue(index + 1));
+  return ok();
 }
 
 function addTask(data) {
   const title = text(data.title, 200);
+  const responsible = text(data.responsible, 120);
   if (!title) return fail("Task title zaroori hai.");
-  return addRow("Tasks", [
+  if (!responsible) return fail("Responsible person ka naam zaroori hai.");
+  const current = ensureTaskSheet();
+  current.appendRow([
     title,
     text(data.type, 40),
     text(data.status, 20) || "Pending",
     text(data.time, 40),
+    responsible,
     new Date()
   ]);
+  return ok();
 }
 
 function updateTaskStatus(title) {
@@ -668,6 +858,27 @@ function saveDriveFile(base64, fileName, mimeType) {
 function checkStatus(phone) {
   const wanted = phoneOf(phone);
   if (!wanted) return json({ found: false });
-  const found = dataRows("Participants").find(row => phoneOf(row[4]) === wanted);
-  return found ? json({ found: true, event: found[3], name: found[0] }) : json({ found: false });
+  const current = ensureParticipantSheet();
+  if (!current || current.getLastRow() < 2) return json({ found: false });
+  const headers = headersOf(current);
+  const rows = current.getDataRange().getValues().slice(1)
+    .map((row, index) => ({ row, sheetRow: index + 2, order: Number(valueAt(row, headers, ["Program Order", "Order", "Sequence"])) || index + 1, status: String(valueAt(row, headers, ["Program Status", "Status"]) || "Pending") }))
+    .sort((left, right) => (left.status === "Completed") - (right.status === "Completed") || left.order - right.order);
+  const found = rows.find(item => phoneOf(valueAt(item.row, headers, ["Phone", "Phone Number"])) === wanted);
+  if (!found) return json({ found: false });
+
+  const row = found.row;
+  const position = rows.indexOf(found) + 1;
+  return json({
+    found: true,
+    event: valueAt(row, headers, ["Event"]),
+    name: valueAt(row, headers, ["Name", "Participant Name"]),
+    type: valueAt(row, headers, ["Type"]),
+    groupMembers: valueAt(row, headers, ["Group Members"]),
+    status: String(valueAt(row, headers, ["Program Status", "Status"]) || "Pending"),
+    position: position,
+    totalParticipants: rows.length,
+    isNext: position === 1,
+    nextProgram: rows[0] ? valueAt(rows[0].row, headers, ["Event"]) : ""
+  });
 }

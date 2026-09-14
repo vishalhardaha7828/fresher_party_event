@@ -74,6 +74,16 @@
             /* ---- Volunteer cards ---- */
             .volunteer-card { @apply overflow-hidden rounded-2xl border border-brand-100 bg-white text-left shadow-soft transition hover:-translate-y-1 hover:shadow-lift; }
             .volunteer-id   { @apply inline-block rounded-full bg-brand-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-700 ring-1 ring-brand-200; }
+
+            /* ---- Participant pass ---- */
+            .participant-pass       { @apply relative overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-700 via-brand-600 to-accent-600 p-5 text-white shadow-lift; }
+            .participant-pass::after { content: ""; @apply pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full border-[18px] border-white/10; }
+            .pass-label             { @apply text-[10px] font-bold uppercase tracking-[.18em] text-white/70; }
+            .pass-name              { @apply mt-1 font-display text-xl font-extrabold; }
+            .pass-detail            { @apply rounded-xl bg-white/10 p-3 backdrop-blur-sm; }
+            .pass-queue             { @apply mt-4 flex items-center justify-between gap-3 border-t border-dashed border-white/30 pt-4; }
+            .pass-next              { @apply rounded-full bg-emerald-300 px-3 py-1.5 text-xs font-extrabold text-emerald-950; }
+            .pass-number            { @apply font-display text-2xl font-extrabold; }
         }
     </style>
 </head>
@@ -229,7 +239,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbyNBHtt7SsOhtHEphfazBxScg-nEr9yG89RnT4bfbagNbWGs6H9E1fRR-Q54J1JTEGe/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzvQUM0XENSqaNghHCLltg7EkY52Jivo2my_QrEfq1vHK9_JVd-idW6T5xr1IP0tjn4/exec";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -295,6 +305,28 @@ const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "
 
 function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => HTML_ENTITIES[character]);
+}
+
+function participantStatusText(data) {
+    const group = data.type === "Group" && data.groupMembers
+        ? `<div class="pass-detail mt-3"><div class="pass-label">Group Members</div><div class="mt-1 text-sm font-semibold">${escapeHtml(data.groupMembers)}</div></div>`
+        : "";
+    const position = data.status === "Completed"
+        ? `<span class="pass-next">✓ PERFORMANCE COMPLETED</span>`
+        : data.isNext
+        ? `<span class="pass-next">🎤 NEXT PROGRAM</span>`
+        : `<span><span class="pass-label">Program No.</span><span class="pass-number ml-2">${escapeHtml(data.position)}</span></span>`;
+    return `<article class="participant-pass text-left">
+        <div class="relative z-10">
+            <div class="flex items-start justify-between gap-3">
+                <div><div class="pass-label">College Event Pass</div><div class="pass-name">${escapeHtml(data.name || "Participant")}</div></div>
+                <div class="text-2xl" aria-hidden="true">🎟️</div>
+            </div>
+            <div class="pass-detail mt-4"><div class="pass-label">Program</div><div class="mt-1 text-lg font-bold">${escapeHtml(data.event || "-")}</div></div>
+            ${group}
+            <div class="pass-queue">${position}<span class="text-right text-xs text-white/70">${escapeHtml(data.position)} of ${escapeHtml(data.totalParticipants)}</span></div>
+        </div>
+    </article>`;
 }
 
 const $ = id => document.getElementById(id);
@@ -616,8 +648,8 @@ async function checkParticipantStatus() {
         result.className = data.found
             ? "mt-4 rounded-xl bg-emerald-50 p-3 text-[13px] font-bold text-emerald-700 ring-1 ring-emerald-200"
             : "mt-4 rounded-xl bg-rose-50 p-3 text-[13px] font-bold text-rose-700 ring-1 ring-rose-200";
-        result.innerText = data.found
-            ? `Status: Form Bhara gaya hai! Event: ${data.event}, Name: ${data.name}`
+        result.innerHTML = data.found
+            ? participantStatusText(data)
             : "Status: Aapka form abhi tak nahi bhara gaya hai.";
     } catch (error) {
         console.error("Status check error:", error);

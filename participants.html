@@ -179,6 +179,8 @@
                             <th>Semester</th>
                             <th>Event</th>
                             <th>Phone</th>
+                            <th id="orderHeader" class="hidden">Program Order</th>
+                            <th id="statusHeader" class="hidden">Status</th>
                         </tr>
                     </thead>
                     <tbody id="participantTableBody">
@@ -193,7 +195,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbyNBHtt7SsOhtHEphfazBxScg-nEr9yG89RnT4bfbagNbWGs6H9E1fRR-Q54J1JTEGe/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzvQUM0XENSqaNghHCLltg7EkY52Jivo2my_QrEfq1vHK9_JVd-idW6T5xr1IP0tjn4/exec";
 
 /* =========================================================================
    SESSION — sirf UI ke liye; asli permission Apps Script me check hoti hai.
@@ -252,6 +254,14 @@ document.addEventListener("DOMContentLoaded", () => {
     $("pPhone").addEventListener("input", event => {
         event.target.value = event.target.value.replace(/\D/g, "");
     });
+    $("orderHeader").classList.toggle("hidden", !auth.isAdmin());
+    $("statusHeader").classList.toggle("hidden", !auth.isAdmin());
+    $("participantTableBody").addEventListener("click", event => {
+        const button = event.target.closest("[data-order]");
+        if (button) changeParticipantOrder(button.dataset.phone, button.dataset.order);
+        const completeButton = event.target.closest("[data-complete-phone]");
+        if (completeButton) completeParticipant(completeButton.dataset.completePhone);
+    });
 
     // Participants list sirf admin ko dikhti hai.
     if (auth.isAdmin()) {
@@ -295,17 +305,19 @@ function renderTable() {
     const search = $("searchInput").value.toLowerCase();
 
     const visible = participantRows.slice(1)
-        .filter(row => row[0])
-        .filter(row => [row[0], row[3], row[5], row[6]]
+        .map((row, offset) => ({ row, index: offset + 1 }))
+        .filter(({ row }) => row[0])
+        .filter(({ row }) => [row[0], row[3], row[5], row[6]]
             .map(value => String(value || "").toLowerCase())
             .some(value => value.includes(search)));
+    visible.sort((left, right) => (Number(left.row[8]) || left.index) - (Number(right.row[8]) || right.index));
 
     body.innerHTML = visible.length
-        ? visible.map(participantRow).join("")
-        : `<tr><td colspan="6" class="py-6 text-center text-ink-500">Koi participant nahi mila.</td></tr>`;
+        ? visible.map(({ row, index }) => participantRow(row, index)).join("")
+        : `<tr><td colspan="${auth.isAdmin() ? 8 : 6}" class="py-6 text-center text-ink-500">Koi participant nahi mila.</td></tr>`;
 }
 
-function participantRow(row) {
+    function participantRow(row, index) {
     const [name, branch, semester, event, phone, type, groupMembers] = row;
     const isGroup = type === "Group";
 
@@ -317,6 +329,19 @@ function participantRow(row) {
         ? `<br><small class="text-ink-500">Members: ${escapeHtml(groupMembers)}</small>`
         : "";
 
+    const order = auth.isAdmin()
+        ? `<td><div class="flex items-center gap-1.5">
+            <button type="button" class="btn btn-sm btn-muted" data-order="up" data-phone="${escapeHtml(phone)}" title="Upar karein">↑</button>
+            <span class="px-1 font-bold">${escapeHtml(row[8] || index + 1)}</span>
+            <button type="button" class="btn btn-sm btn-muted" data-order="down" data-phone="${escapeHtml(phone)}" title="Neeche karein">↓</button>
+        </div></td>`
+        : "";
+    const status = auth.isAdmin()
+        ? (row[9] === "Completed"
+            ? `<td><span class="badge badge-completed">✓ Completed</span></td>`
+            : `<td><button type="button" class="btn btn-sm btn-success" data-complete-phone="${escapeHtml(phone)}">Complete</button></td>`)
+        : "";
+
     return `<tr>
         <td class="font-semibold text-ink-900">${escapeHtml(name || "-")}${members}</td>
         <td>${badge}</td>
@@ -324,7 +349,32 @@ function participantRow(row) {
         <td>${escapeHtml(semester || "-")}</td>
         <td>${escapeHtml(event || "-")}</td>
         <td class="whitespace-nowrap">${escapeHtml(phone || "-")}</td>
+        ${order}
+        ${status}
     </tr>`;
+}
+
+async function changeParticipantOrder(phone, direction) {
+    try {
+        await apiPost("updateParticipantOrder", { phone, direction });
+        localStorage.removeItem(CACHE_KEY);
+        await loadData();
+    } catch (error) {
+        console.error("Participant order error:", error);
+        alert(error.message || "Program order update nahi ho saka.");
+    }
+}
+
+async function completeParticipant(phone) {
+    if (!confirm("Kya performance complete ho gayi hai?")) return;
+    try {
+        await apiPost("completeParticipant", { phone });
+        localStorage.removeItem(CACHE_KEY);
+        await loadData();
+    } catch (error) {
+        console.error("Participant completion error:", error);
+        alert(error.message || "Participant complete nahi ho saka.");
+    }
 }
 
 /* =========================================================================

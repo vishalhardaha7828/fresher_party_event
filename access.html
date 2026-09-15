@@ -13,7 +13,6 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        /* ---- Festive Violet & Amber theme tokens ---- */
         tailwind.config = {
             theme: {
                 extend: {
@@ -40,42 +39,34 @@
 
     <style type="text/tailwindcss">
         @layer components {
-            /* ---- Shell ---- */
             .topbar    { @apply sticky top-0 z-40 bg-gradient-to-r from-brand-700 via-brand-600 to-accent-600 text-white shadow-lg shadow-brand-900/20; }
             .brandmark { @apply font-display text-lg font-extrabold tracking-tight; }
 
-            /* ---- Navigation ---- */
             .nav-links         { @apply absolute left-0 top-full z-50 hidden w-full flex-col gap-1 border-t border-white/15 bg-brand-700 p-3 shadow-xl md:static md:flex md:w-auto md:flex-row md:items-center md:gap-1 md:border-0 md:bg-transparent md:p-0 md:shadow-none; }
             .nav-links.is-open { @apply flex; }
             .nav-link          { @apply block rounded-lg px-3 py-2 text-[13px] font-semibold text-white/85 transition hover:bg-white/15 hover:text-white; }
             .nav-link-active   { @apply bg-white/20 text-white; }
 
-            /* ---- Cards ---- */
             .card               { @apply mb-5 rounded-2xl border border-brand-100 bg-white p-6 shadow-soft; }
             .card-title         { @apply mb-4 flex items-center gap-2.5 font-display text-base font-bold text-ink-900; }
             .card-title::before { content: ""; @apply block h-5 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-brand-500 to-accent-500; }
             .muted              { @apply text-[13px] text-ink-500; }
 
-            /* ---- Forms ---- */
             .field-label { @apply mb-1.5 mt-4 block text-left text-[13px] font-semibold text-ink-700; }
             .input       { @apply w-full rounded-xl border border-brand-100 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm outline-none transition placeholder:text-ink-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/15; }
 
-            /* ---- Buttons ---- */
             .btn         { @apply mt-5 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-accent-600 px-4 py-2.5 text-sm font-bold text-white shadow-glow transition hover:brightness-110 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none; }
             .btn-sm      { @apply mt-0 w-auto rounded-lg px-3 py-1.5 text-xs; }
             .btn-danger  { @apply bg-gradient-to-r from-rose-500 to-red-600 shadow-none; }
             .btn-warning { @apply bg-gradient-to-r from-amber-500 to-orange-500 shadow-none; }
             .btn-success { @apply bg-gradient-to-r from-emerald-500 to-teal-600 shadow-none; }
 
-            /* ---- Tabs ---- */
             .tab           { @apply mt-0 flex-1 cursor-pointer rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-[13px] font-bold text-ink-500 transition hover:border-brand-300 hover:text-brand-700; }
             .tab.is-active { @apply border-transparent bg-gradient-to-r from-brand-600 to-accent-600 text-white shadow-glow; }
 
-            /* ---- Volunteer cards ---- */
             .volunteer-card { @apply overflow-hidden rounded-2xl border border-brand-100 bg-white text-left shadow-soft transition hover:-translate-y-1 hover:shadow-lift; }
             .volunteer-id   { @apply inline-block rounded-full bg-brand-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-700 ring-1 ring-brand-200; }
 
-            /* ---- Participant pass ---- */
             .participant-pass       { @apply relative overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-700 via-brand-600 to-accent-600 p-5 text-white shadow-lift; }
             .participant-pass::after { content: ""; @apply pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full border-[18px] border-white/10; }
             .pass-label             { @apply text-[10px] font-bold uppercase tracking-[.18em] text-white/70; }
@@ -113,14 +104,12 @@
 
             <div id="roleBadge" class="mt-4 inline-block rounded-full bg-brand-50 px-3.5 py-1.5 text-xs font-bold text-ink-500 ring-1 ring-brand-200">Mode: Normal User / Student</div>
 
-            <!-- Tabs for Login / Register / Participant Status -->
             <div id="authTabs" class="mt-5 flex flex-col gap-2 sm:flex-row">
                 <button type="button" id="tabLoginBtn" class="tab is-active" data-tab="login">Admin Login</button>
                 <button type="button" id="tabRegBtn" class="tab" data-tab="register">Volunteer Register</button>
                 <button type="button" id="tabStatusBtn" class="tab" data-tab="status">Participant Status</button>
             </div>
 
-            <!-- LOGIN SECTION -->
             <div id="loginSection">
                 <label class="field-label" for="loginRole">Login Role:</label>
                 <select id="loginRole" class="input">
@@ -129,13 +118,11 @@
                     <option value="participant">Participant</option>
                 </select>
 
-                <!-- Admin Login -->
                 <div id="adminLoginBox">
                     <label class="field-label" for="adminPin">Admin ID / PIN:</label>
                     <input type="password" id="adminPin" class="input" maxlength="64" autocomplete="current-password" placeholder="Enter Admin PIN">
                 </div>
 
-                <!-- Volunteer Login -->
                 <div id="volunteerLoginBox" class="hidden">
                     <label class="field-label" for="volLoginPhone">Phone Number:</label>
                     <input type="tel" id="volLoginPhone" class="input" maxlength="10" autocomplete="username" placeholder="10-digit mobile number">
@@ -143,7 +130,6 @@
                     <input type="password" id="volLoginPassword" class="input" autocomplete="current-password" placeholder="Your password">
                 </div>
 
-                <!-- Participant Login -->
                 <div id="participantLoginBox" class="hidden">
                     <label class="field-label" for="partLoginPhone">Registered Phone Number:</label>
                     <input type="tel" id="partLoginPhone" class="input" maxlength="10" placeholder="10-digit mobile number">
@@ -152,7 +138,6 @@
                 <button type="button" id="loginBtn" class="btn">Login →</button>
             </div>
 
-            <!-- VOLUNTEER REGISTRATION SECTION -->
             <div id="registerSection" class="hidden">
                 <p class="muted mt-4 rounded-xl bg-brand-50 p-3 text-left">Apni branch ke liye Volunteer banne ke liye form bharein. Admin approval ke baad aap login kar sakenge.</p>
                 <label class="field-label" for="regName">Poora Naam:</label>
@@ -173,10 +158,12 @@
                 <input type="tel" id="regPhone" class="input" maxlength="10" placeholder="10-digit mobile number">
                 <label class="field-label" for="regPassword">Create Password:</label>
                 <input type="password" id="regPassword" class="input" autocomplete="new-password" placeholder="Kam se kam 6 characters">
+                <label class="field-label" for="regQrFile">Apna UPI QR Code:</label>
+                <input type="file" id="regQrFile" class="input" accept="image/*">
+                <p class="muted rounded-lg bg-amber-50 p-2.5 text-left ring-1 ring-amber-200">QR image Drive ke event folder me save hogi aur login ke baad collection page par dikhegi. Maximum 5 MB.</p>
                 <button type="button" id="registerBtn" class="btn">Submit Application</button>
             </div>
 
-            <!-- PARTICIPANT STATUS SECTION -->
             <div id="statusSection" class="hidden">
                 <p class="muted mt-4 rounded-xl bg-brand-50 p-3 text-left">Apna registration status check karne ke liye phone number daalein.</p>
                 <label class="field-label" for="checkPhone">Phone Number:</label>
@@ -185,7 +172,6 @@
                 <div id="statusResult" class="mt-4 text-[13px] font-bold"></div>
             </div>
 
-            <!-- LOGOUT SECTION -->
             <div id="logoutSection" class="hidden">
                 <p id="logoutMsg" class="mt-4 rounded-xl bg-emerald-50 p-3 text-[13px] font-semibold text-emerald-700 ring-1 ring-emerald-200"></p>
                 <button type="button" id="logoutBtn" class="btn btn-danger">Logout</button>
@@ -199,7 +185,16 @@
             </div>
         </div>
 
-        <!-- ADMIN APPROVALS & MEETING MANAGEMENT (Only for Admin) -->
+        <div class="card hidden" id="volunteerDashboardSection">
+            <h2 class="card-title">🙋 Volunteer Collection Dashboard</h2>
+            <div id="volunteerDashboard"></div>
+        </div>
+
+        <div class="card hidden" id="adminCollectionSection">
+            <h2 class="card-title">📊 Volunteer Collection Summary</h2>
+            <div id="adminCollectionSummary"></div>
+        </div>
+
         <div class="card hidden" id="adminApprovalSection">
             <h2 class="card-title">📥 Volunteer Applications Approval</h2>
             <div id="pendingVolunteersList" class="grid grid-cols-[repeat(auto-fit,minmax(235px,1fr))] gap-3">
@@ -218,7 +213,6 @@
             <button type="button" id="saveMeetingBtn" class="btn">Save Meeting Details</button>
         </div>
 
-        <!-- ADMIN MEDIA UPLOAD SECTION -->
         <div class="card hidden" id="adminMediaBox">
             <h2 class="card-title">📸 Upload Photos &amp; Videos (Admin)</h2>
             <label class="field-label" for="mediaType">Media Type:</label>
@@ -236,20 +230,8 @@
     </div>
 
 <script>
-/* =========================================================================
-   CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
-   ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbzvQUM0XENSqaNghHCLltg7EkY52Jivo2my_QrEfq1vHK9_JVd-idW6T5xr1IP0tjn4/exec";
-
+const API_URL = "https://script.google.com/macros/s/AKfycbz9I7g6gFYA9WfhwzhGJwZ1hils0BIFTEPcqbyKXipdxiuqOT20N0UAWLdF7OTyP0wJ/exec";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-
-/* =========================================================================
-   SESSION
-   Admin PIN ab HTML me kahin nahi hai — wo Apps Script ki Script Properties
-   me rehta hai. Login par server ek token deta hai aur har privileged action
-   par wahi token verify hota hai. Yahan store kiya gaya role sirf UI dikhane
-   ke liye hai; ise badalne se koi extra access nahi milta.
-   ========================================================================= */
 const STORE_PREFIX = "em.";
 
 const auth = {
@@ -257,6 +239,8 @@ const auth = {
     role:     () => localStorage.getItem(STORE_PREFIX + "role") || "",
     branch:   () => localStorage.getItem(STORE_PREFIX + "branch") || "",
     semester: () => localStorage.getItem(STORE_PREFIX + "semester") || "",
+    name:     () => localStorage.getItem(STORE_PREFIX + "name") || "",
+    qrUrl:    () => localStorage.getItem(STORE_PREFIX + "qrUrl") || "",
     isAdmin:  () => auth.role() === "Admin",
 
     save(session) {
@@ -265,9 +249,10 @@ const auth = {
         localStorage.setItem(STORE_PREFIX + "branch", session.branch || "");
         localStorage.setItem(STORE_PREFIX + "semester", session.semester || "");
         localStorage.setItem(STORE_PREFIX + "phone", session.phone || "");
+        localStorage.setItem(STORE_PREFIX + "name", session.name || "");
+        localStorage.setItem(STORE_PREFIX + "qrUrl", session.qrUrl || "");
     },
 
-    /** Sirf is portal ki keys hatata hai — baaki site data ko haath nahi lagata. */
     clear() {
         Object.keys(localStorage)
             .filter(key => key.startsWith(STORE_PREFIX))
@@ -275,11 +260,6 @@ const auth = {
     }
 };
 
-/* =========================================================================
-   API
-   Content-Type header jaan-bujh kar set nahi kiya gaya — warna browser CORS
-   preflight bhejta hai jise Apps Script web app handle nahi karta.
-   ========================================================================= */
 async function apiGet(action, params = {}) {
     const query = new URLSearchParams({ action, token: auth.token(), ...params });
     const response = await fetch(`${API_URL}?${query}`);
@@ -298,9 +278,6 @@ async function apiPost(action, payload = {}) {
     return result;
 }
 
-/* =========================================================================
-   OUTPUT SAFETY
-   ========================================================================= */
 const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
 function escapeHtml(value) {
@@ -330,10 +307,8 @@ function participantStatusText(data) {
 }
 
 const $ = id => document.getElementById(id);
+let dashboardTimer = null;
 
-/* =========================================================================
-   PAGE SETUP
-   ========================================================================= */
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("[data-menu-toggle]").addEventListener("click", () => {
         $("navLinks").classList.toggle("is-open");
@@ -374,9 +349,6 @@ function handleLoginRoleChange() {
     });
 }
 
-/* =========================================================================
-   LOGIN / LOGOUT
-   ========================================================================= */
 async function loginUser() {
     const role = $("loginRole").value;
     const button = $("loginBtn");
@@ -398,7 +370,6 @@ async function loginUser() {
 async function loginAsAdmin() {
     const pin = $("adminPin").value.trim();
     if (!pin) throw new Error("Admin PIN daalein!");
-    // PIN server par verify hota hai; yahan sirf token wapas aata hai.
     const result = await apiPost("adminLogin", { pin });
     auth.save({ token: result.token, role: "Admin" });
     $("adminPin").value = "";
@@ -409,16 +380,14 @@ async function loginAsVolunteer() {
     const phone = $("volLoginPhone").value.trim();
     const password = $("volLoginPassword").value;
     if (!phone || !password) throw new Error("Phone number aur password dono daalein!");
-    // POST use hota hai taki password kabhi URL ya browser history me na jaye.
     const result = await apiPost("volunteerLogin", { phone, password });
-    auth.save({ token: result.token, role: "Volunteer", branch: result.branch, semester: result.semester, phone });
+    auth.save({ token: result.token, role: "Volunteer", name: result.name, branch: result.branch, semester: result.semester, phone: result.phone || phone, qrUrl: result.qrUrl });
     $("volLoginPassword").value = "";
     alert("Volunteer Login Successful!");
 }
 
 function loginAsParticipant() {
     const phone = $("partLoginPhone").value.trim();
-    // Participant view sirf read-only status ke liye hai, isme koi server permission nahi milti.
     auth.save({ role: "Participant", phone });
     alert("Participant Logged In!");
 }
@@ -427,16 +396,12 @@ async function logoutUser() {
     const token = auth.token();
     auth.clear();
     if (token) {
-        // Server par bhi session khatam karte hain, sirf browser se hatana kaafi nahi.
         try { await apiPost("logout", { token }); } catch (error) { console.error("Logout error:", error); }
     }
     alert("Logged out successfully.");
     updateUI();
 }
 
-/* =========================================================================
-   UI STATE
-   ========================================================================= */
 function updateUI() {
     const role = auth.role();
     const badge = $("roleBadge");
@@ -450,8 +415,12 @@ function updateUI() {
     show("logoutSection", isLoggedIn);
     show("volunteerDirectorySection", role === "Admin");
     show("adminApprovalSection", role === "Admin");
+    show("volunteerDashboardSection", role === "Volunteer");
+    show("adminCollectionSection", role === "Admin");
     show("meetingSection", role === "Admin");
     show("adminMediaBox", role === "Admin");
+    clearInterval(dashboardTimer);
+    dashboardTimer = null;
 
     badge.className = "mt-4 inline-block rounded-full px-3.5 py-1.5 text-xs font-bold ring-1";
     if (role === "Admin") {
@@ -460,10 +429,14 @@ function updateUI() {
         $("logoutMsg").innerText = "Aap Admin ke roop me logged in hain.";
         loadApprovedVolunteers();
         loadPendingVolunteers();
+        loadCollectionDashboard();
+        dashboardTimer = setInterval(loadCollectionDashboard, 30000);
     } else if (role === "Volunteer") {
         badge.classList.add("bg-amber-50", "text-amber-800", "ring-amber-200");
         badge.innerText = `● Mode: Volunteer (${auth.branch()})`;
         $("logoutMsg").innerText = `Aap ${auth.branch()} - ${auth.semester()} volunteer ke roop me logged in hain.`;
+        loadCollectionDashboard();
+        dashboardTimer = setInterval(loadCollectionDashboard, 30000);
     } else if (role === "Participant") {
         badge.classList.add("bg-brand-50", "text-brand-700", "ring-brand-200");
         badge.innerText = "● Mode: Participant Status View";
@@ -475,9 +448,6 @@ function updateUI() {
     }
 }
 
-/* =========================================================================
-   VOLUNTEER REGISTRATION & MANAGEMENT
-   ========================================================================= */
 async function submitVolunteerRegistration() {
     const payload = {
         name: $("regName").value.trim(),
@@ -498,8 +468,17 @@ async function submitVolunteerRegistration() {
     const button = $("registerBtn");
     button.disabled = true;
     try {
-        await apiPost("registerVolunteer", payload);
+        const qrFile = $("regQrFile").files[0];
+        if (qrFile && qrFile.size > MAX_UPLOAD_BYTES) throw new Error("QR image 5 MB se chhoti honi chahiye.");
+        const qr = qrFile ? await readFileAsBase64(qrFile) : null;
+        await apiPost("registerVolunteer", {
+            ...payload,
+            qrFileData: qr ? qr.base64Data : "",
+            qrFileName: qr ? qrFile.name : "",
+            qrFileMimeType: qr ? qr.mimeType : ""
+        });
         $("regPassword").value = "";
+        $("regQrFile").value = "";
         alert("Volunteer application submitted successfully! Admin approval ke baad login kar sakenge.");
         switchTab("login");
     } catch (error) {
@@ -508,6 +487,52 @@ async function submitVolunteerRegistration() {
     } finally {
         button.disabled = false;
     }
+}
+
+async function loadCollectionDashboard() {
+    try {
+        const data = await apiGet("getVolunteerDashboard");
+        if (auth.role() === "Volunteer") renderVolunteerDashboard(data);
+        if (auth.role() === "Admin") renderAdminCollectionSummary(data);
+    } catch (error) {
+        console.error("Collection dashboard error:", error);
+        const target = auth.role() === "Admin" ? $("adminCollectionSummary") : $("volunteerDashboard");
+        if (target) target.innerHTML = `<p class="text-[13px] font-semibold text-rose-600">Collection status load nahi ho saka.</p>`;
+    }
+}
+
+function driveImageUrl(value) {
+    const url = String(value || "").trim();
+    const match = url.match(/(?:\/d\/|id=|[?&]fileId=)([a-zA-Z0-9_-]+)/);
+    return match ? `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800` : (/^https?:\/\//i.test(url) ? url : "");
+}
+
+function renderVolunteerDashboard(data) {
+    const volunteer = data.volunteer;
+    const stats = data.stats || { total: 0, entries: 0 };
+    if (!volunteer) {
+        $("volunteerDashboard").innerHTML = `<p class="muted">Volunteer profile nahi mila.</p>`;
+        return;
+    }
+    const qr = driveImageUrl(volunteer.qrUrl || auth.qrUrl());
+    $("volunteerDashboard").innerHTML = `<div class="grid gap-4 md:grid-cols-[1fr_190px]">
+        <div>
+            <h3 class="font-display text-lg font-extrabold text-ink-900">${escapeHtml(volunteer.name)}</h3>
+            <p class="muted mt-1">${escapeHtml(volunteer.branch)} · ${escapeHtml(volunteer.semester)} · ${escapeHtml(volunteer.phone)}</p>
+            <div class="mt-4 grid grid-cols-2 gap-3">
+                <div class="rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-200"><p class="text-[11px] font-bold uppercase text-emerald-700">Total Collection</p><p class="mt-1 text-2xl font-extrabold text-emerald-800">₹ ${Number(stats.total || 0).toLocaleString("en-IN")}</p></div>
+                <div class="rounded-xl bg-brand-50 p-4 ring-1 ring-brand-200"><p class="text-[11px] font-bold uppercase text-brand-700">Entries</p><p class="mt-1 text-2xl font-extrabold text-brand-800">${escapeHtml(stats.entries || 0)}</p></div>
+            </div>
+        </div>
+        <div class="rounded-xl border border-brand-100 bg-brand-50 p-3 text-center">${qr ? `<img src="${escapeHtml(qr)}" class="mx-auto h-36 w-36 rounded-lg bg-white object-contain p-1" alt="${escapeHtml(volunteer.name)} QR Code">` : `<p class="muted py-12">QR upload nahi hai.</p>`}<p class="mt-2 text-[11px] font-bold text-brand-700">Aapka payment QR</p></div>
+    </div>`;
+}
+
+function renderAdminCollectionSummary(data) {
+    const volunteers = data.volunteers || [];
+    $("adminCollectionSummary").innerHTML = volunteers.length
+        ? `<div class="overflow-x-auto"><table class="w-full text-left text-[13px]"><thead><tr class="bg-brand-50 text-[11px] uppercase text-brand-800"><th class="p-3">Volunteer</th><th class="p-3">Branch</th><th class="p-3">Entries</th><th class="p-3">Total Collection</th></tr></thead><tbody>${volunteers.map(volunteer => `<tr class="border-t border-brand-100"><td class="p-3 font-bold">${escapeHtml(volunteer.name)}</td><td class="p-3">${escapeHtml(volunteer.branch)} - ${escapeHtml(volunteer.semester)}</td><td class="p-3">${escapeHtml(volunteer.entries)}</td><td class="p-3 font-bold text-emerald-700">₹ ${Number(volunteer.total || 0).toLocaleString("en-IN")}</td></tr>`).join("")}</tbody></table></div>`
+        : `<p class="muted">Abhi approved volunteer collection record nahi hai.</p>`;
 }
 
 async function loadPendingVolunteers() {
@@ -538,11 +563,6 @@ async function loadApprovedVolunteers() {
     }
 }
 
-/**
- * Volunteer card banata hai. Buttons me sirf phone number ek data attribute ke
- * roop me jata hai — inline onclick nahi, taki sheet ka text kabhi code ki tarah
- * run na ho sake.
- */
 function volunteerCard(volunteer, listType) {
     const phone = escapeHtml(volunteer.phone || "");
     const initial = escapeHtml(String(volunteer.name || "?").trim().charAt(0).toUpperCase() || "?");
@@ -578,7 +598,6 @@ function volunteerCard(volunteer, listType) {
     </article>`;
 }
 
-// Approve / Edit / Delete buttons — event delegation se, inline onclick ke bina.
 document.addEventListener("click", event => {
     const button = event.target.closest("[data-approve], [data-edit], [data-delete]");
     if (!button) return;
@@ -635,9 +654,6 @@ function refreshVolunteerLists() {
     loadApprovedVolunteers();
 }
 
-/* =========================================================================
-   PARTICIPANT STATUS
-   ========================================================================= */
 async function checkParticipantStatus() {
     const phone = $("checkPhone").value.trim();
     const result = $("statusResult");
@@ -657,9 +673,6 @@ async function checkParticipantStatus() {
     }
 }
 
-/* =========================================================================
-   ADMIN: MEETINGS
-   ========================================================================= */
 async function saveMeetingDetails() {
     const meetingDate = $("meetingDate").value;
     const decision = $("meetingDecision").value.trim();
@@ -680,9 +693,6 @@ async function saveMeetingDetails() {
     }
 }
 
-/* =========================================================================
-   ADMIN: MEDIA UPLOAD
-   ========================================================================= */
 async function uploadAdminMedia() {
     const title = $("mediaTitle").value.trim();
     const file = $("mediaFile").files[0];

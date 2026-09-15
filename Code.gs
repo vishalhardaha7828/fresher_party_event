@@ -22,6 +22,7 @@
 
 const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
 const MEDIA_FOLDER_ID = "";
+const QR_FOLDER_ID = "1btQmTpV23_PH8jX3sligmVdmggOAsjF5";
 
 const SESSION_TTL_SECONDS = 6 * 60 * 60; // CacheService ki maximum limit
 const FAILED_LOGIN_DELAY_MS = 400;       // brute force ko dheema karta hai
@@ -34,6 +35,7 @@ const ALLOWED_UPLOAD_TYPES = /^(image|video)\//i;
  * Yahan list na hone ka matlab: action public hai (registration, feedback, read-only views).
  */
 const ACTION_ROLES = {
+  getVolunteerDashboard: ["Admin", "Volunteer"],
   getFeedback: ["Admin"],
   deleteFeedback: ["Admin"],
   updateParticipantOrder: ["Admin"],
@@ -261,6 +263,7 @@ function doGet(e) {
       case "getPendingVolunteers": return getVolunteers("pending");
       case "getFeedback": return getFeedback();
       case "checkStatus": return checkStatus(parameters.phone);
+      case "getVolunteerDashboard": return getVolunteerDashboard(auth.session);
       default: return fail("Invalid GET action");
     }
   } catch (error) {
@@ -345,15 +348,18 @@ function volunteerLogin(phone, password) {
     found.current.getRange(found.row, passwordIndex + 1).setValue(makePasswordHash(supplied));
   }
 
+  const name = valueAt(row, found.headers, ["Name", "Volunteer Name"]);
   const branch = valueAt(row, found.headers, ["Branch"]);
   const semester = valueAt(row, found.headers, ["Semester"]);
+  const qrUrl = valueAt(row, found.headers, ["QR URL", "QR Code URL"]);
   const token = createSession({
     role: "Volunteer",
+    name: String(name),
     phone: phoneOf(phone),
     branch: String(branch),
     semester: String(semester)
   });
-  return ok({ role: "Volunteer", branch: branch, semester: semester, token: token });
+  return ok({ role: "Volunteer", name: name, branch: branch, semester: semester, phone: phoneOf(phone), qrUrl: qrUrl, token: token });
 }
 
 // ---------------------------------------------------------------------------
@@ -375,6 +381,7 @@ function getVolunteers(status) {
     branch: valueAt(row, headers, ["Branch"]),
     semester: valueAt(row, headers, ["Semester"]),
     phone: valueAt(row, headers, ["Phone", "Phone Number"]),
+    qrUrl: valueAt(row, headers, ["QR URL", "QR Code URL"]),
     status: statusIndex >= 0 ? row[statusIndex] : "",
     rowIndex: offset + 2
   })).filter(item => String(item.status).trim().toLowerCase() === status);
@@ -407,10 +414,19 @@ function registerVolunteer(data) {
   let current = volunteerSheet();
   if (!current) {
     current = SPREADSHEET.insertSheet("Volunteers");
-    current.appendRow(["Name", "Branch", "Semester", "Phone", "Password", "Status", "Timestamp"]);
+    current.appendRow(["Name", "Branch", "Semester", "Phone", "Password", "Status", "Timestamp", "QR URL"]);
+  }
+  let headers = headersOf(current);
+  if (col(headers, ["QR URL", "QR Code URL"]) < 0) {
+    current.insertColumnAfter(current.getLastColumn());
+    current.getRange(1, current.getLastColumn()).setValue("QR URL");
   }
   if (findVolunteer(phone)) return fail("Ye phone number pehle se registered hai.");
 
+  let qrUrl = "";
+  if (data.qrFileData) {
+    qrUrl = saveDriveFile(data.qrFileData, data.qrFileName, data.qrFileMimeType, true, QR_FOLDER_ID || MEDIA_FOLDER_ID);
+  }
   current.appendRow([
     name,
     text(data.branch, 40),
@@ -418,7 +434,8 @@ function registerVolunteer(data) {
     phone,
     makePasswordHash(password),
     "Pending",
-    new Date()
+    new Date(),
+    qrUrl
   ]);
   return ok();
 }
@@ -467,6 +484,50 @@ function getData() {
     if (current) result[name] = current.getDataRange().getValues();
   });
   return json(result);
+}
+
+function getVolunteerDashboard(session) {
+  const current = volunteerSheet();
+  if (!current) return ok({ volunteer: null, stats: { total: 0, entries: 0 }, volunteers: [] });
+  const headers = headersOf(current);
+  const totals = {};
+  collectionRowsWithOwner().forEach(item => {
+    const phone = phoneOf(item.phone);
+    if (!phone) return;
+    if (!totals[phone]) totals[phone] = { total: 0, entries: 0 };
+    totals[phone].total += Number(item.amount) || 0;
+    totals[phone].entries += 1;
+  });
+  const volunteers = current.getDataRange().getValues().slice(1).map(row => {
+    const phone = phoneOf(valueAt(row, headers, ["Phone", "Phone Number"]));
+    const stats = totals[phone] || { total: 0, entries: 0 };
+    return {
+      name: valueAt(row, headers, ["Name", "Volunteer Name"]),
+      phone: phone,
+      branch: valueAt(row, headers, ["Branch"]),
+      semester: valueAt(row, headers, ["Semester"]),
+      status: valueAt(row, headers, ["Status", "Approval Status"]),
+      qrUrl: valueAt(row, headers, ["QR URL", "QR Code URL"]),
+      total: stats.total,
+      entries: stats.entries
+    };
+  }).filter(item => String(item.status).toLowerCase() === "approved");
+  const phone = session && session.role === "Volunteer" ? phoneOf(session.phone) : "";
+  return ok({
+    volunteer: phone ? volunteers.find(item => item.phone === phone) || null : null,
+    stats: phone ? (totals[phone] || { total: 0, entries: 0 }) : { total: 0, entries: 0 },
+    volunteers: session && session.role === "Admin" ? volunteers : []
+  });
+}
+
+function collectionRowsWithOwner() {
+  const current = sheet("Collection");
+  if (!current || current.getLastRow() < 2) return [];
+  const headers = headersOf(current);
+  return current.getDataRange().getValues().slice(1).map(row => ({
+    amount: valueAt(row, headers, ["Amount"]),
+    phone: valueAt(row, headers, ["Collected By Phone", "Volunteer Phone"])
+  }));
 }
 
 function ensureParticipantSheet() {
@@ -649,8 +710,31 @@ function saveCollection(data, session, updating) {
     return fail("Volunteer Faculty entry nahi kar sakta; 5th semester volunteer Lateral Entry bhi nahi bhar sakta.");
   }
 
-  const values = [name, branch, semester, category, amount, text(data.mode, 20) || "Cash"];
-  return updating ? updateRow("Collection", data.rowIndex, values) : addRow("Collection", values.concat([new Date()]));
+  ensureCollectionSheet();
+  const ownerPhone = isVolunteer ? phoneOf(session.phone) : text(data.collectedByPhone, 20);
+  const ownerName = isVolunteer ? text(session.name, 120) : text(data.collectedByName, 120);
+  const values = [name, branch, semester, category, amount, text(data.mode, 20) || "Cash", new Date(), ownerPhone, ownerName];
+  return updating ? updateRow("Collection", data.rowIndex, values) : addRow("Collection", values);
+}
+
+function ensureCollectionSheet() {
+  let current = sheet("Collection");
+  if (!current) {
+    current = SPREADSHEET.insertSheet("Collection");
+    current.appendRow(["Name", "Branch", "Semester", "Category", "Amount", "Mode", "Timestamp", "Collected By Phone", "Collected By"]);
+    return current;
+  }
+  let headers = headersOf(current);
+  if (col(headers, ["Collected By Phone", "Volunteer Phone"]) < 0) {
+    current.insertColumnAfter(current.getLastColumn());
+    current.getRange(1, current.getLastColumn()).setValue("Collected By Phone");
+  }
+  headers = headersOf(current);
+  if (col(headers, ["Collected By", "Volunteer Name"]) < 0) {
+    current.insertColumnAfter(current.getLastColumn());
+    current.getRange(1, current.getLastColumn()).setValue("Collected By");
+  }
+  return current;
 }
 
 // ---------------------------------------------------------------------------
@@ -837,15 +921,17 @@ function uploadMedia(data) {
  * Note: file "anyone with the link" par share hoti hai, kyunki gallery aur bill
  * links public page par dikhte hain. Isliye private documents yahan upload na karein.
  */
-function saveDriveFile(base64, fileName, mimeType) {
+function saveDriveFile(base64, fileName, mimeType, imageOnly, folderId) {
   const type = text(mimeType, 100) || "application/octet-stream";
-  if (!ALLOWED_UPLOAD_TYPES.test(type)) throw new Error("Sirf image ya video upload ki ja sakti hai.");
+  if (imageOnly ? !/^image\//i.test(type) : !ALLOWED_UPLOAD_TYPES.test(type)) {
+    throw new Error(imageOnly ? "Sirf QR image upload karein." : "Sirf image ya video upload ki ja sakti hai.");
+  }
 
   const bytes = Utilities.base64Decode(String(base64 || ""));
   if (bytes.length > MAX_UPLOAD_BYTES) throw new Error("File 5 MB se chhoti honi chahiye.");
 
   const blob = Utilities.newBlob(bytes, type, text(fileName, 200) || "upload");
-  const folder = MEDIA_FOLDER_ID ? DriveApp.getFolderById(MEDIA_FOLDER_ID) : DriveApp.getRootFolder();
+  const folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
   const file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   return file.getUrl();

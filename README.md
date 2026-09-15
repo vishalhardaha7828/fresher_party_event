@@ -23,6 +23,7 @@ College Fresher & Farewell event ke liye live tracker portal — pure HTML + Tai
    - Value: apna PIN (jo bhi rakhna ho)
 
    > PIN ab kisi bhi HTML file me nahi hai. Use kabhi bhi HTML me wapas na daalein.
+  > QR files ko kisi specific Drive folder me rakhna ho to `Code.gs` me `QR_FOLDER_ID` me us folder ka ID daalein. Khali chhodne par Drive root folder use hoga.
 3. **Deploy**: Deploy → New deployment → Web app
    - Execute as: **Me**
    - Who has access: **Anyone**
@@ -43,6 +44,8 @@ Kya theek kiya gaya:
 - Buttons event delegation use karte hain, inline `onclick` nahi.
 - Bill aur media links sirf `http`/`https` allow karte hain.
 - Logout par server session bhi khatam hota hai, aur sirf is portal ki keys hatti hain.
+- Volunteer registration me QR image Drive par save hoti hai; login ke baad volunteer ka apna QR collection page par dikhta hai.
+- Har nayi volunteer collection entry me collector phone/name save hota hai, jisse Access page par volunteer-wise total aur entry count admin ko live milta hai.
 
 Abhi baaki hai (jaan-bujh kar chhoda gaya):
 

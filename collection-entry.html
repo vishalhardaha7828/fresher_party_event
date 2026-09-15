@@ -189,13 +189,9 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbzvQUM0XENSqaNghHCLltg7EkY52Jivo2my_QrEfq1vHK9_JVd-idW6T5xr1IP0tjn4/exec";
-const QR_URL = "https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&sz=w1000";
+const API_URL = "https://script.google.com/macros/s/AKfycbzj2L27mBLI8q0bSY0NQRvJdmXrB3_4FuQ8ctjlWJVfHVLoi-_h8TcgAigHYYXPAJWz/exec";
+const DEFAULT_QR_URL = "https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&sz=w1000";
 
-/* =========================================================================
-   SESSION — sirf UI ke liye. Asli permission Apps Script me check hoti hai,
-   aur volunteer ki branch/semester server apne session se leta hai.
-   ========================================================================= */
 const STORE_PREFIX = "em.";
 const CACHE_KEY = STORE_PREFIX + "data";
 
@@ -204,13 +200,24 @@ const auth = {
     role:        () => localStorage.getItem(STORE_PREFIX + "role") || "",
     branch:      () => localStorage.getItem(STORE_PREFIX + "branch") || "",
     semester:    () => localStorage.getItem(STORE_PREFIX + "semester") || "",
+    qrUrl:       () => localStorage.getItem(STORE_PREFIX + "qrUrl") || "",
     isAdmin:     () => auth.role() === "Admin",
     isVolunteer: () => auth.role() === "Volunteer"
 };
 
-/* =========================================================================
-   API — Content-Type header jaan-bujh kar set nahi kiya gaya (CORS preflight).
-   ========================================================================= */
+function getDriveThumbnail(url) {
+    const raw = String(url || "").trim();
+    const match = raw.match(/(?:\/d\/|id=|[?&]fileId=)([a-zA-Z0-9_-]+)/);
+    return match ? `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000` : (/^https?:\/\//i.test(raw) ? raw : "");
+}
+
+const qrUrl = () => {
+    if (auth.isVolunteer() && auth.qrUrl()) {
+        return getDriveThumbnail(auth.qrUrl());
+    }
+    return DEFAULT_QR_URL;
+};
+
 async function apiGet(action, params = {}) {
     const query = new URLSearchParams({ action, token: auth.token(), ...params });
     const response = await fetch(`${API_URL}?${query}`);
@@ -229,9 +236,6 @@ async function apiPost(action, payload = {}) {
     return result;
 }
 
-/* =========================================================================
-   OUTPUT SAFETY
-   ========================================================================= */
 const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
 function escapeHtml(value) {
@@ -244,9 +248,6 @@ function formatDateTime(value) {
     return `${date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`;
 }
 
-/* =========================================================================
-   PAGE STATE
-   ========================================================================= */
 const $ = id => document.getElementById(id);
 let rows = [];
 let editingIndex = null;
@@ -266,7 +267,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (auth.isVolunteer()) configureVolunteer();
     }
 
-    $("qrImage").src = QR_URL;
+    $("qrImage").src = qrUrl();
     $("qrImage").addEventListener("error", () => {
         $("qrMessage").innerText = "QR image load nahi hui. Drive sharing me 'Anyone with the link' select karein.";
     });
@@ -280,7 +281,6 @@ document.addEventListener("DOMContentLoaded", () => {
         render();
     });
 
-    // Edit / Delete buttons event delegation se — inline onclick ke bina.
     $("records").addEventListener("click", event => {
         const button = event.target.closest("[data-edit], [data-delete]");
         if (!button) return;
@@ -292,7 +292,6 @@ document.addEventListener("DOMContentLoaded", () => {
     loadData();
 });
 
-/** Volunteer apni hi branch/semester ki entry kar sakta hai — server bhi yahi enforce karta hai. */
 function configureVolunteer() {
     const branch = auth.branch();
     const semester = auth.semester();
@@ -315,9 +314,6 @@ function updateQr() {
     $("qrBox").classList.toggle("hidden", $("mode").value !== "UPI");
 }
 
-/* =========================================================================
-   DATA
-   ========================================================================= */
 async function loadData() {
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
@@ -334,7 +330,6 @@ async function loadData() {
     }
 }
 
-/** Logged-out visitor ke browser me participants ka personal data cache nahi karte. */
 function cacheableCopy(data) {
     if (auth.role()) return data;
     const copy = { ...data };
@@ -383,9 +378,6 @@ function recordRow(row, index, isAdmin) {
     </tr>`;
 }
 
-/* =========================================================================
-   SAVE / EDIT / DELETE
-   ========================================================================= */
 async function saveCollection(event) {
     event.preventDefault();
     if (editingIndex !== null && !auth.isAdmin()) {

@@ -132,6 +132,19 @@ function valueAt(row, headers, names) {
   return index >= 0 ? row[index] : "";
 }
 
+function duplicateColumn(headers, name, occurrence) {
+  const wanted = String(name).toLowerCase().replace(/[\s_\/]+/g, "");
+  let found = 0;
+  for (let index = 0; index < headers.length; index++) {
+    const current = String(headers[index] || "").toLowerCase().replace(/[\s_\/]+/g, "");
+    if (current === wanted) {
+      found += 1;
+      if (found === occurrence) return index;
+    }
+  }
+  return -1;
+}
+
 function dataRows(name, aliases) {
   const current = sheet(name, aliases);
   if (!current || current.getLastRow() < 2) return [];
@@ -460,6 +473,7 @@ function getVolunteerDashboard(session) {
   if (!current) return ok({ volunteer: null, stats: { total: 0, entries: 0 }, volunteers: [] });
   const headers = headersOf(current);
   const totals = volunteerMetricsByPhone();
+  const settlements = settlementSummaryByPhone();
   const volunteers = current.getDataRange().getValues().slice(1).map(row => {
     const phone = phoneOf(valueAt(row, headers, ["Phone", "Phone Number"]));
     const stats = totals[phone] || { total: 0, entries: 0 };
@@ -471,7 +485,8 @@ function getVolunteerDashboard(session) {
       status: valueAt(row, headers, ["Status", "Approval Status"]),
       qrUrl: valueAt(row, headers, ["QRURL", "QR URL", "QR Code URL"]),
       total: stats.total,
-      entries: stats.entries
+      entries: stats.entries,
+      lastSettlement: settlements[phone] || null
     };
   }).filter(item => String(item.status).toLowerCase() === "approved")
     .sort((left, right) => (Number(right.total) || 0) - (Number(left.total) || 0) || (String(left.name || "").localeCompare(String(right.name || ""))));
@@ -479,8 +494,36 @@ function getVolunteerDashboard(session) {
   return ok({
     volunteer: phone ? volunteers.find(item => item.phone === phone) || null : null,
     stats: phone ? (totals[phone] || { total: 0, entries: 0 }) : { total: 0, entries: 0 },
-    volunteers: session && session.role === "Admin" ? volunteers : []
+    volunteers: session && session.role === "Admin" ? volunteers : [],
+    settlement: phone ? (settlements[phone] || null) : null
   });
+}
+
+function settlementSummaryByPhone() {
+  const current = sheet("Collection");
+  if (!current || current.getLastRow() < 2) return {};
+  const headers = headersOf(current);
+  const phoneIndex = col(headers, ["Collected By Phone", "Volunteer Phone"]);
+  const nameIndex = col(headers, ["Collected By", "Volunteer Name"]);
+  const settledIndex = col(headers, ["Settled", "Settlement Status"]);
+  const amountIndex = col(headers, ["Settlement Amount"]);
+  const dateIndex = col(headers, ["Settlement Date"]);
+  if (settledIndex < 0) return {};
+
+  const result = {};
+  current.getDataRange().getValues().slice(1).forEach(row => {
+    if (String(row[settledIndex] || "").trim().toLowerCase() !== "yes") return;
+    const phone = phoneOf(phoneIndex >= 0 ? row[phoneIndex] : "");
+    const name = text(nameIndex >= 0 ? row[nameIndex] : "", 120);
+    const key = phone || normalizeVolunteerName(name);
+    if (!key) return;
+    const amount = amountIndex >= 0 ? Number(row[amountIndex]) || 0 : 0;
+    const date = dateIndex >= 0 ? row[dateIndex] : "";
+    if (!result[key]) result[key] = { amount: 0, date: date || "", settled: true };
+    result[key].amount = Math.max(result[key].amount, amount);
+    if (date) result[key].date = date;
+  });
+  return result;
 }
 
 function normalizeCollectionOwnerColumns() {
@@ -535,6 +578,8 @@ function settleVolunteerCollection(data) {
   let headers = headersOf(current);
   let settledIndex = col(headers, ["Settled", "Settlement Status"]);
   let settledAtIndex = col(headers, ["Settled At", "Settlement Date"]);
+  let settlementAmountIndex = col(headers, ["Settlement Amount"]);
+  let settlementDateIndex = col(headers, ["Settlement Date"]);
   if (settledIndex < 0) {
     current.insertColumnAfter(current.getLastColumn());
     current.getRange(1, current.getLastColumn()).setValue("Settled");
@@ -547,8 +592,16 @@ function settleVolunteerCollection(data) {
     headers = headersOf(current);
     settledAtIndex = col(headers, ["Settled At", "Settlement Date"]);
   }
+  if (settlementAmountIndex < 0 || settlementDateIndex < 0) {
+    ensureCollectionSheet();
+    headers = headersOf(current);
+    settlementAmountIndex = col(headers, ["Settlement Amount"]);
+    settlementDateIndex = col(headers, ["Settlement Date"]);
+  }
   const rows = current.getDataRange().getValues();
   let settledCount = 0;
+  let settlementAmount = 0;
+  const settlementDate = new Date();
 
   rows.slice(1).forEach((row, index) => {
     const alreadySettled = String(row[settledIndex] || "").trim().toLowerCase() === "yes";
@@ -558,13 +611,26 @@ function settleVolunteerCollection(data) {
     const samePhone = targetPhone && rowPhone === targetPhone;
     const sameName = !targetPhone && targetName && normalizeVolunteerName(rowName) === normalizeVolunteerName(targetName);
     if (samePhone || sameName) {
+      settlementAmount += Number(valueAt(row, headers, ["Amount", "Collected Amount"])) || 0;
       current.getRange(index + 2, settledIndex + 1).setValue("Yes");
-      if (settledAtIndex >= 0) current.getRange(index + 2, settledAtIndex + 1).setValue(new Date());
+      if (settledAtIndex >= 0) current.getRange(index + 2, settledAtIndex + 1).setValue("Yes");
+      if (settlementAmountIndex >= 0) current.getRange(index + 2, settlementAmountIndex + 1).setValue(0);
+      if (settlementDateIndex >= 0) current.getRange(index + 2, settlementDateIndex + 1).setValue(settlementDate);
       settledCount += 1;
     }
   });
 
-  return ok({ cleared: settledCount });
+  if (settledCount && settlementAmountIndex >= 0) {
+    rows.slice(1).forEach((row, index) => {
+      const rowPhone = phoneOf(valueAt(row, headers, ["Collected By Phone", "Volunteer Phone"]));
+      const rowName = text(valueAt(row, headers, ["Collected By", "Volunteer Name"]), 120);
+      const samePhone = targetPhone && rowPhone === targetPhone;
+      const sameName = !targetPhone && targetName && normalizeVolunteerName(rowName) === normalizeVolunteerName(targetName);
+      if (samePhone || sameName) current.getRange(index + 2, settlementAmountIndex + 1).setValue(settlementAmount);
+    });
+  }
+
+  return ok({ cleared: settledCount, amount: settlementAmount, date: settlementDate });
 }
 
 function ensureParticipantSheet() {
@@ -751,11 +817,16 @@ function saveCollection(data, session, updating) {
   setValue(["Category"], category);
   setValue(["Amount", "Collected Amount"], amount);
   setValue(["Mode", "Payment Mode"], text(data.mode, 20) || "Cash");
-  setValue(["Timestamp", "Date", "Date / Time", "Created At"], new Date());
+  const dateIndex = col(headers, ["Timestamp", "Date", "Date / Time", "Created At"]) >= 0
+      ? col(headers, ["Timestamp", "Date", "Date / Time", "Created At"])
+      : duplicateColumn(headers, "Mode", 2);
+  if (dateIndex >= 0) values[dateIndex] = new Date();
   setValue(["Collected By Phone", "Volunteer Phone"], ownerPhone);
   setValue(["Collected By", "Volunteer Name", "Collector"], ownerName);
-  setValue(["Settled", "Settlement Status"], "");
-  setValue(["Settled At", "Settlement Date"], "");
+  if (!updating) {
+    setValue(["Settled", "Settlement Status"], "");
+    setValue(["Settled At", "Settlement Date"], "");
+  }
 
   if (updating) {
     const sheetRow = Number(data.rowIndex) + 1;
@@ -793,6 +864,16 @@ function ensureCollectionSheet() {
   if (col(headers, ["Settled At", "Settlement Date"]) < 0) {
     current.insertColumnAfter(current.getLastColumn());
     current.getRange(1, current.getLastColumn()).setValue("Settled At");
+  }
+  headers = headersOf(current);
+  if (col(headers, ["Settlement Amount"]) < 0) {
+    current.insertColumnAfter(current.getLastColumn());
+    current.getRange(1, current.getLastColumn()).setValue("Settlement Amount");
+  }
+  headers = headersOf(current);
+  if (col(headers, ["Settlement Date"]) < 0) {
+    current.insertColumnAfter(current.getLastColumn());
+    current.getRange(1, current.getLastColumn()).setValue("Settlement Date");
   }
   return current;
 }

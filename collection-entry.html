@@ -189,7 +189,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbwE0VZOZj5v0Hq6i8bwtyoMHrlsBaC7aYb-D8kQcIGvIsCq5Lq430en2XGAasqcXJGw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxyGvgn7YGgNzcziVWNPdktzglaD3hD6UAKbMiQjaU96xea1VACG-2nrQyphZv4iT6h/exec";
 const DEFAULT_QR_URL = "https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&sz=w1000";
 
 const STORE_PREFIX = "em.";
@@ -253,6 +253,7 @@ function formatDateTime(value) {
 const $ = id => document.getElementById(id);
 let rows = [];
 let editingIndex = null;
+let collectionHeaders = [];
 
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("[data-menu-toggle]").addEventListener("click", () => $("navLinks").classList.toggle("is-open"));
@@ -319,12 +320,17 @@ function updateQr() {
 async function loadData() {
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
-        try { rows = JSON.parse(cached).Collection || []; render(); } catch { localStorage.removeItem(CACHE_KEY); }
+        try {
+            rows = JSON.parse(cached).Collection || [];
+            collectionHeaders = rows[0] || [];
+            render();
+        } catch { localStorage.removeItem(CACHE_KEY); }
     }
     try {
         const data = await apiGet("getData");
         localStorage.setItem(CACHE_KEY, JSON.stringify(cacheableCopy(data)));
         rows = data.Collection || [];
+        collectionHeaders = rows[0] || [];
         render();
     } catch (error) {
         console.error("Collection load error:", error);
@@ -361,7 +367,38 @@ function render() {
         : `<tr><td colspan="${isAdmin ? 8 : 7}" class="py-6 text-center text-ink-500">Koi record nahi mila.</td></tr>`;
 }
 
+function collectionColumn(names, fallback) {
+    const wanted = names.map(name => String(name).toLowerCase().replace(/[\s_\/]+/g, ""));
+    const index = collectionHeaders.findIndex(header => wanted.includes(String(header || "").toLowerCase().replace(/[\s_\/]+/g, "")));
+    return index >= 0 ? index : fallback;
+}
+
+function collectionDuplicateColumn(name, occurrence) {
+    const wanted = String(name).toLowerCase().replace(/[\s_\/]+/g, "");
+    let found = 0;
+    for (let index = 0; index < collectionHeaders.length; index++) {
+        const current = String(collectionHeaders[index] || "").toLowerCase().replace(/[\s_\/]+/g, "");
+        if (current === wanted) {
+            found += 1;
+            if (found === occurrence) return index;
+        }
+    }
+    return -1;
+}
+
 function recordRow(row, index, isAdmin) {
+    const nameIndex = collectionColumn(["Name", "Student Name", "Participant Name"], 0);
+    const branchIndex = collectionColumn(["Branch"], 1);
+    const semesterIndex = collectionColumn(["Semester", "Sem"], 2);
+    const categoryIndex = collectionColumn(["Category"], 3);
+    const amountIndex = collectionColumn(["Amount", "Collected Amount"], 4);
+    const modeIndex = collectionColumn(["Mode", "Payment Mode"], 5);
+    const dateIndex = collectionColumn(["Timestamp", "Date", "Date / Time", "Created At"], -1) >= 0
+        ? collectionColumn(["Timestamp", "Date", "Date / Time", "Created At"], 6)
+        : collectionDuplicateColumn("Mode", 2);
+    const settledIndex = collectionColumn(["Settled", "Settlement Status"], -1);
+    const isSettled = settledIndex >= 0 && String(row[settledIndex] || "").trim().toLowerCase() === "yes";
+    const settledLabel = isSettled ? `<span class="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Settled</span>` : "";
     const actions = isAdmin
         ? `<td><div class="flex gap-1.5">
                <button type="button" class="btn btn-sm btn-warning" data-edit="${index}">Edit</button>
@@ -369,13 +406,13 @@ function recordRow(row, index, isAdmin) {
            </div></td>`
         : "";
     return `<tr>
-        <td class="font-semibold text-ink-900">${escapeHtml(row[0] || "-")}</td>
-        <td>${escapeHtml(row[1] || "-")}</td>
-        <td>${escapeHtml(row[2] || "-")}</td>
-        <td>${escapeHtml(row[3] || "-")}</td>
-        <td class="whitespace-nowrap font-bold text-emerald-700">₹ ${escapeHtml(row[4] || 0)}</td>
-        <td>${escapeHtml(row[5] || "-")}</td>
-        <td class="whitespace-nowrap text-ink-500">${escapeHtml(formatDateTime(row[6]))}</td>
+        <td class="font-semibold text-ink-900">${escapeHtml(row[nameIndex] || "-")}${settledLabel}</td>
+        <td>${escapeHtml(row[branchIndex] || "-")}</td>
+        <td>${escapeHtml(row[semesterIndex] || "-")}</td>
+        <td>${escapeHtml(row[categoryIndex] || "-")}</td>
+        <td class="whitespace-nowrap font-bold text-emerald-700">₹ ${escapeHtml(row[amountIndex] || 0)}</td>
+        <td>${escapeHtml(row[modeIndex] || "-")}</td>
+        <td class="whitespace-nowrap text-ink-500">${escapeHtml(formatDateTime(row[dateIndex]))}</td>
         ${actions}
     </tr>`;
 }

@@ -230,7 +230,7 @@
     </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbwE0VZOZj5v0Hq6i8bwtyoMHrlsBaC7aYb-D8kQcIGvIsCq5Lq430en2XGAasqcXJGw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxyGvgn7YGgNzcziVWNPdktzglaD3hD6UAKbMiQjaU96xea1VACG-2nrQyphZv4iT6h/exec";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const STORE_PREFIX = "em.";
 
@@ -508,6 +508,12 @@ function driveImageUrl(value) {
     return match ? `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800` : (/^https?:\/\//i.test(url) ? url : "");
 }
 
+function formatSettlementDate(value) {
+    if (!value) return "-";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+}
+
 function renderVolunteerDashboard(data) {
     const ranking = Array.isArray(data.volunteers) ? data.volunteers : [];
     const fallbackVolunteer = ranking.find(item => String(item.phone || "") === String(auth.phone() || ""))
@@ -541,6 +547,7 @@ function renderVolunteerDashboard(data) {
                 <div class="rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-200"><p class="text-[11px] font-bold uppercase text-emerald-700">Total Collection</p><p class="mt-1 text-2xl font-extrabold text-emerald-800">₹ ${Number(stats.total || 0).toLocaleString("en-IN")}</p></div>
                 <div class="rounded-xl bg-brand-50 p-4 ring-1 ring-brand-200"><p class="text-[11px] font-bold uppercase text-brand-700">Entries</p><p class="mt-1 text-2xl font-extrabold text-brand-800">${escapeHtml(stats.entries || 0)}</p></div>
             </div>
+            <div class="mt-3 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200"><p class="text-[11px] font-bold uppercase text-amber-700">Last Settlement</p><p class="mt-1 font-bold text-amber-900">₹ ${Number(data.settlement?.amount || volunteer.lastSettlement?.amount || 0).toLocaleString("en-IN")}</p><p class="text-[12px] text-amber-800">${escapeHtml(formatSettlementDate(data.settlement?.date || volunteer.lastSettlement?.date))}</p></div>
         </div>
         <div class="rounded-xl border border-brand-100 bg-brand-50 p-3 text-center">${qr ? `<img src="${escapeHtml(qr)}" class="mx-auto h-36 w-36 rounded-lg bg-white object-contain p-1" alt="${escapeHtml(volunteer.name)} QR Code">` : `<p class="muted py-12">QR upload nahi hai.</p>`}<p class="mt-2 text-[11px] font-bold text-brand-700">Aapka payment QR</p></div>
     </div>`;
@@ -549,7 +556,7 @@ function renderVolunteerDashboard(data) {
 function renderAdminCollectionSummary(data) {
     const volunteers = [...(data.volunteers || [])].sort((left, right) => (Number(right.total) || 0) - (Number(left.total) || 0) || (String(left.name || "").localeCompare(String(right.name || ""))));
     $("adminCollectionSummary").innerHTML = volunteers.length
-    ? `<div class="overflow-x-auto"><table class="w-full text-left text-[13px]"><thead><tr class="bg-brand-50 text-[11px] uppercase text-brand-800"><th class="p-3">Rank</th><th class="p-3">Volunteer</th><th class="p-3">Branch</th><th class="p-3">Entries</th><th class="p-3">Total Collection</th><th class="p-3">Action</th></tr></thead><tbody>${volunteers.map((volunteer, index) => `<tr class="border-t border-brand-100"><td class="p-3 font-bold text-brand-700">#${index + 1}</td><td class="p-3 font-bold">${escapeHtml(volunteer.name)}</td><td class="p-3">${escapeHtml(volunteer.branch)} - ${escapeHtml(volunteer.semester)}</td><td class="p-3">${escapeHtml(volunteer.entries)}</td><td class="p-3 font-bold text-emerald-700">₹ ${Number(volunteer.total || 0).toLocaleString("en-IN")}</td><td class="p-3"><button type="button" class="btn btn-sm btn-warning" data-settle="${escapeHtml(volunteer.phone || "")}">Settle</button></td></tr>`).join("")}</tbody></table></div>`
+    ? `<div class="overflow-x-auto"><table class="w-full text-left text-[13px]"><thead><tr class="bg-brand-50 text-[11px] uppercase text-brand-800"><th class="p-3">Rank</th><th class="p-3">Volunteer</th><th class="p-3">Branch</th><th class="p-3">Entries</th><th class="p-3">Current Collection</th><th class="p-3">Last Settlement</th><th class="p-3">Action</th></tr></thead><tbody>${volunteers.map((volunteer, index) => `<tr class="border-t border-brand-100"><td class="p-3 font-bold text-brand-700">#${index + 1}</td><td class="p-3 font-bold">${escapeHtml(volunteer.name)}</td><td class="p-3">${escapeHtml(volunteer.branch)} - ${escapeHtml(volunteer.semester)}</td><td class="p-3">${escapeHtml(volunteer.entries)}</td><td class="p-3 font-bold text-emerald-700">₹ ${Number(volunteer.total || 0).toLocaleString("en-IN")}</td><td class="p-3 text-[12px]">₹ ${Number(volunteer.lastSettlement?.amount || 0).toLocaleString("en-IN")}<br><span class="text-ink-500">${escapeHtml(formatSettlementDate(volunteer.lastSettlement?.date))}</span></td><td class="p-3"><button type="button" class="btn btn-sm btn-warning" data-settle="${escapeHtml(volunteer.phone || "")}">Settle</button></td></tr>`).join("")}</tbody></table></div>`
         : `<p class="muted">Abhi approved volunteer collection record nahi hai.</p>`;
 }
 

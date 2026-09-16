@@ -201,7 +201,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbwPnYqYfUeKw_OHJDZu3LeoIMfDDmSgVZK2FfLhhbuxkjbcO-S7t8bgYbfmRKkxtXLE/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwE0VZOZj5v0Hq6i8bwtyoMHrlsBaC7aYb-D8kQcIGvIsCq5Lq430en2XGAasqcXJGw/exec";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -318,21 +318,35 @@ function applyData(data) {
 }
 
 /** Sheet ke ek column ka total nikalta hai (header row chhod kar). */
-function sumColumn(rows, columnIndex) {
+function getHeaderIndex(rows, names) {
+    if (!Array.isArray(rows) || !rows.length) return -1;
+    const headers = rows[0].map(value => String(value || "").trim().toLowerCase().replace(/[\s_]+/g, ""));
+    for (const name of names) {
+        const target = String(name).trim().toLowerCase().replace(/[\s_]+/g, "");
+        const index = headers.findIndex(value => value === target);
+        if (index >= 0) return index;
+    }
+    return -1;
+}
+
+function sumColumn(rows, columnIndex, alternativeNames = []) {
+    if (!Array.isArray(rows) || rows.length < 2) return 0;
+    const index = columnIndex >= 0 ? columnIndex : getHeaderIndex(rows, alternativeNames);
+    if (index < 0) return 0;
+
     return rows.slice(1)
-        .filter(row => row[0])
-        .reduce((total, row) => total + (Number(row[columnIndex]) || 0), 0);
+        .filter(row => Array.isArray(row) && row.some(value => value !== "" && value !== null && value !== undefined))
+        .reduce((total, row) => total + (Number(row[index]) || 0), 0);
 }
 
 function renderSummary() {
-    const totalCollection = sumColumn(collectionRows, 4);
-    const totalExpense = sumColumn(expenseRows, 1);
+    const totalCollection = sumColumn(collectionRows, getHeaderIndex(collectionRows, ["Amount"]), ["Amount"]);
+    const totalExpense = sumColumn(expenseRows, getHeaderIndex(expenseRows, ["Amount"]), ["Amount"]);
     const remaining = totalCollection - totalExpense;
 
     $("totalCollBox").innerText = `₹ ${totalCollection.toLocaleString("en-IN")}`;
     $("totalExpBox").innerText = `₹ ${totalExpense.toLocaleString("en-IN")}`;
     $("remainingBox").innerText = `₹ ${remaining.toLocaleString("en-IN")}`;
-    // Balance negative ho to turant dikhna chahiye.
     $("remainingBox").classList.toggle("text-rose-600", remaining < 0);
 }
 

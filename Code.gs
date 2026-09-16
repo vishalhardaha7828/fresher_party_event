@@ -1,39 +1,17 @@
 /**
  * Fresher & Farewell Event Manager — Google Apps Script backend.
- *
- * SETUP (ek baar karna hai):
- *   1. Project Settings > Script Properties me `ADMIN_PIN` add karein.
- *      Admin PIN ab kabhi bhi HTML me nahi rakha jata.
- *   2. Deploy > New deployment > Web app
- *        Execute as      : Me
- *        Who has access  : Anyone
- *   3. Nayi /exec URL copy karke har HTML page ke CONFIG block me paste karein.
- *
- * SECURITY MODEL:
- *   - Login par server ek session token deta hai (6 ghante valid).
- *   - Har privileged action se pehle `authorize()` token verify karta hai.
- *   - Browser me `role` sirf UI dikhane ke liye hai; asli permission yahan check hoti hai.
- *   - Volunteer passwords `sha256$<salt>$<hash>` format me store hote hain.
  */
-
-// ---------------------------------------------------------------------------
-// Configuration
-// ---------------------------------------------------------------------------
 
 const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
 const MEDIA_FOLDER_ID = "";
 const QR_FOLDER_ID = "1btQmTpV23_PH8jX3sligmVdmggOAsjF5";
 
-const SESSION_TTL_SECONDS = 6 * 60 * 60; // CacheService ki maximum limit
-const FAILED_LOGIN_DELAY_MS = 400;       // brute force ko dheema karta hai
+const SESSION_TTL_SECONDS = 6 * 60 * 60;
+const FAILED_LOGIN_DELAY_MS = 400;
 const MAX_TEXT_LENGTH = 500;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_UPLOAD_TYPES = /^(image|video)\//i;
 
-/**
- * Kaun sa action kis role se allowed hai.
- * Yahan list na hone ka matlab: action public hai (registration, feedback, read-only views).
- */
 const ACTION_ROLES = {
   getVolunteerDashboard: ["Admin", "Volunteer"],
   getFeedback: ["Admin"],
@@ -46,6 +24,7 @@ const ACTION_ROLES = {
   addCollection: ["Admin", "Volunteer"],
   updateCollection: ["Admin"],
   deleteCollection: ["Admin"],
+  settleVolunteerCollection: ["Admin"],
   addExpense: ["Admin"],
   updateExpense: ["Admin"],
   deleteExpense: ["Admin"],
@@ -54,10 +33,6 @@ const ACTION_ROLES = {
   addMeeting: ["Admin"],
   uploadMedia: ["Admin"]
 };
-
-// ---------------------------------------------------------------------------
-// Response helpers
-// ---------------------------------------------------------------------------
 
 function json(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
@@ -72,28 +47,20 @@ function fail(message) {
   return json({ status: "error", message: message });
 }
 
-// ---------------------------------------------------------------------------
-// Input validation
-// ---------------------------------------------------------------------------
-
-/** Trim karke length cap lagata hai, taki koi sheet me bahut bada blob na daal sake. */
 function text(value, limit) {
   return String(value == null ? "" : value).trim().slice(0, limit || MAX_TEXT_LENGTH);
 }
 
-/** Sirf 10-digit phone number accept karta hai, warna khali string. */
 function phoneOf(value) {
   const digits = String(value == null ? "" : value).replace(/\D/g, "");
   return digits.length === 10 ? digits : "";
 }
 
-/** Valid non-negative number ya `null`. */
 function amountOf(value) {
   const number = Number(value);
   return isFinite(number) && number >= 0 ? number : null;
 }
 
-/** Do strings ko compare karta hai bina timing hint diye. */
 function safeEquals(left, right) {
   const a = String(left);
   const b = String(right);
@@ -102,41 +69,6 @@ function safeEquals(left, right) {
   for (let i = 0; i < a.length; i++) difference |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return difference === 0;
 }
-
-// ---------------------------------------------------------------------------
-// Password hashing
-// ---------------------------------------------------------------------------
-
-function sha256Hex(value) {
-  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value, Utilities.Charset.UTF_8)
-    .map(byte => ("0" + (byte & 0xff).toString(16)).slice(-2))
-    .join("");
-}
-
-function makePasswordHash(password) {
-  const salt = Utilities.getUuid().replace(/-/g, "").slice(0, 16);
-  return "sha256$" + salt + "$" + sha256Hex(salt + ":" + password);
-}
-
-function isLegacyPassword(stored) {
-  return String(stored || "").indexOf("sha256$") !== 0;
-}
-
-/**
- * Hash ya purana plaintext password — dono ke saath kaam karta hai.
- * Purane accounts login ke waqt apne aap hash me upgrade ho jate hain.
- */
-function passwordMatches(stored, supplied) {
-  const value = String(stored || "");
-  if (!value) return false;
-  if (isLegacyPassword(value)) return safeEquals(value, String(supplied));
-  const parts = value.split("$");
-  return parts.length === 3 && safeEquals(parts[2], sha256Hex(parts[1] + ":" + supplied));
-}
-
-// ---------------------------------------------------------------------------
-// Sessions
-// ---------------------------------------------------------------------------
 
 function sessionKey(token) {
   return "session:" + token;
@@ -163,10 +95,6 @@ function destroySession(token) {
   if (token) CacheService.getScriptCache().remove(sessionKey(String(token)));
 }
 
-/**
- * Action ke liye permission check karta hai.
- * Return: { allowed: true, session } ya { allowed: false, response }.
- */
 function authorize(action, token) {
   const roles = ACTION_ROLES[action];
   const session = readSession(token);
@@ -176,10 +104,6 @@ function authorize(action, token) {
   }
   return { allowed: true, session: session };
 }
-
-// ---------------------------------------------------------------------------
-// Sheet helpers
-// ---------------------------------------------------------------------------
 
 function sheet(name, aliases) {
   const names = [name].concat(aliases || []);
@@ -196,8 +120,8 @@ function headersOf(current) {
 
 function col(headers, names) {
   for (const name of names) {
-    const wanted = name.toLowerCase().replace(/\s/g, "");
-    const index = headers.findIndex(value => String(value).toLowerCase().replace(/\s/g, "") === wanted);
+    const wanted = name.toLowerCase().replace(/[\s_]+/g, "");
+    const index = headers.findIndex(value => String(value).toLowerCase().replace(/[\s_]+/g, "") === wanted);
     if (index >= 0) return index;
   }
   return -1;
@@ -229,7 +153,6 @@ function updateRow(name, rowIndex, values) {
   return ok();
 }
 
-/** Update ke dauran kisi column ki maujooda value padhta hai (1-based column). */
 function existingCellValue(name, rowIndex, column) {
   const current = sheet(name);
   const sheetRow = Number(rowIndex) + 1;
@@ -244,10 +167,6 @@ function deleteRow(name, rowIndex) {
   current.deleteRow(sheetRow);
   return ok();
 }
-
-// ---------------------------------------------------------------------------
-// Request routing
-// ---------------------------------------------------------------------------
 
 function doGet(e) {
   try {
@@ -276,7 +195,6 @@ function doPost(e) {
     const data = JSON.parse((e && e.postData && e.postData.contents) || "{}");
     const action = String(data.action || "");
 
-    // Login/logout token se pehle chalte hain, isliye inhe alag handle karte hain.
     if (action === "adminLogin") return adminLogin(data.pin);
     if (action === "volunteerLogin") return volunteerLogin(data.phone, data.password);
     if (action === "logout") { destroySession(data.token); return ok(); }
@@ -295,6 +213,7 @@ function doPost(e) {
       case "addCollection": return saveCollection(data, session, false);
       case "updateCollection": return saveCollection(data, session, true);
       case "deleteCollection": return deleteRow("Collection", data.rowIndex);
+      case "settleVolunteerCollection": return settleVolunteerCollection(data);
       case "addExpense": return saveExpense(data, false);
       case "updateExpense": return saveExpense(data, true);
       case "deleteExpense": return deleteRow("Expenses", data.rowIndex);
@@ -311,10 +230,6 @@ function doPost(e) {
     return fail(error.toString());
   }
 }
-
-// ---------------------------------------------------------------------------
-// Authentication
-// ---------------------------------------------------------------------------
 
 function adminLogin(pin) {
   const expected = PropertiesService.getScriptProperties().getProperty("ADMIN_PIN");
@@ -338,53 +253,112 @@ function volunteerLogin(phone, password) {
   const passwordIndex = col(found.headers, ["Password"]);
   const status = String(valueAt(row, found.headers, ["Status", "Approval Status"])).trim().toLowerCase();
 
-  if (passwordIndex < 0 || !passwordMatches(row[passwordIndex], supplied) || status !== "approved") {
+  // Plaintext password comparison
+  if (passwordIndex < 0 || !safeEquals(String(row[passwordIndex]), supplied) || status !== "approved") {
     Utilities.sleep(FAILED_LOGIN_DELAY_MS);
     return fail("Invalid credentials or approval pending");
-  }
-
-  // Purana plaintext password pehle successful login par hash me badal dete hain.
-  if (isLegacyPassword(row[passwordIndex])) {
-    found.current.getRange(found.row, passwordIndex + 1).setValue(makePasswordHash(supplied));
   }
 
   const name = valueAt(row, found.headers, ["Name", "Volunteer Name"]);
   const branch = valueAt(row, found.headers, ["Branch"]);
   const semester = valueAt(row, found.headers, ["Semester"]);
-  const qrUrl = valueAt(row, found.headers, ["QR URL", "QR Code URL"]);
+  const qrUrl = valueAt(row, found.headers, ["QRURL", "QR URL", "QR Code URL"]);
   const token = createSession({
     role: "Volunteer",
     name: String(name),
     phone: phoneOf(phone),
     branch: String(branch),
-    semester: String(semester)
+    semester: String(semester),
+    qrUrl: String(qrUrl)
   });
   return ok({ role: "Volunteer", name: name, branch: branch, semester: semester, phone: phoneOf(phone), qrUrl: qrUrl, token: token });
 }
-
-// ---------------------------------------------------------------------------
-// Volunteers
-// ---------------------------------------------------------------------------
 
 function volunteerSheet() {
   return sheet("Volunteers", ["Volunteer", "Volunteers Data"]);
 }
 
-/** Volunteer records — password column kabhi bahar nahi bhejta. */
+function normalizeVolunteerName(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function volunteerMetricsByPhone() {
+  const totals = {};
+  const volunteerNameMap = {};
+  const volunteerFirstNameMap = {};
+  const current = volunteerSheet();
+
+  if (current && current.getLastRow() >= 2) {
+    const headers = headersOf(current);
+    current.getDataRange().getValues().slice(1).forEach(row => {
+      const phone = phoneOf(valueAt(row, headers, ["Phone", "Phone Number"]));
+      const name = text(valueAt(row, headers, ["Name", "Volunteer Name"]), 120);
+      const normalizedName = normalizeVolunteerName(name);
+      if (!normalizedName) return;
+
+      volunteerNameMap[normalizedName] = phone || volunteerNameMap[normalizedName] || "";
+      const tokens = normalizedName.split(/\s+/).filter(Boolean);
+      tokens.forEach(token => {
+        if (token) volunteerFirstNameMap[token] = phone || volunteerFirstNameMap[token] || "";
+      });
+      if (tokens.length > 1) {
+        const compactName = tokens.join("");
+        volunteerNameMap[compactName] = phone || volunteerNameMap[compactName] || "";
+      }
+    });
+  }
+
+  collectionRowsWithOwner().forEach(item => {
+    if (item.settled) return;
+    const ownedPhone = phoneOf(item.phone);
+    const ownerName = text(item.name, 120);
+    const normalizedOwnerName = normalizeVolunteerName(ownerName);
+    const ownerTokens = normalizedOwnerName ? normalizedOwnerName.split(/\s+/).filter(Boolean) : [];
+
+    let phone = ownedPhone || "";
+    if (!phone && normalizedOwnerName) {
+      const candidateNames = [normalizedOwnerName, ownerTokens.join(""), ...ownerTokens, ownerTokens[0] || ""];
+      for (const candidate of candidateNames) {
+        if (!candidate) continue;
+        const matchedPhone = volunteerNameMap[candidate] || volunteerFirstNameMap[candidate];
+        if (matchedPhone) {
+          phone = matchedPhone;
+          break;
+        }
+      }
+    }
+
+    if (!phone) return;
+    if (!totals[phone]) totals[phone] = { total: 0, entries: 0 };
+    totals[phone].total += Number(item.amount) || 0;
+    totals[phone].entries += 1;
+  });
+
+  return totals;
+}
+
 function getVolunteers(status) {
   const current = volunteerSheet();
   if (!current || current.getLastRow() < 2) return ok({ volunteers: [] });
   const headers = headersOf(current);
   const statusIndex = col(headers, ["Status", "Approval Status"]);
-  const volunteers = current.getDataRange().getValues().slice(1).map((row, offset) => ({
-    name: valueAt(row, headers, ["Name", "Volunteer Name"]),
-    branch: valueAt(row, headers, ["Branch"]),
-    semester: valueAt(row, headers, ["Semester"]),
-    phone: valueAt(row, headers, ["Phone", "Phone Number"]),
-    qrUrl: valueAt(row, headers, ["QR URL", "QR Code URL"]),
-    status: statusIndex >= 0 ? row[statusIndex] : "",
-    rowIndex: offset + 2
-  })).filter(item => String(item.status).trim().toLowerCase() === status);
+  const totals = volunteerMetricsByPhone();
+  const volunteers = current.getDataRange().getValues().slice(1).map((row, offset) => {
+    const phone = phoneOf(valueAt(row, headers, ["Phone", "Phone Number"]));
+    const stats = totals[phone] || { total: 0, entries: 0 };
+    return {
+      name: valueAt(row, headers, ["Name", "Volunteer Name"]),
+      branch: valueAt(row, headers, ["Branch"]),
+      semester: valueAt(row, headers, ["Semester"]),
+      phone: phone,
+      qrUrl: valueAt(row, headers, ["QRURL", "QR URL", "QR Code URL"]),
+      status: statusIndex >= 0 ? row[statusIndex] : "",
+      total: stats.total,
+      entries: stats.entries,
+      rowIndex: offset + 2
+    };
+  }).filter(item => String(item.status).trim().toLowerCase() === status)
+    .sort((left, right) => (Number(right.total) || 0) - (Number(left.total) || 0) || (String(left.name || "").localeCompare(String(right.name || ""))));
   return ok({ volunteers: volunteers });
 }
 
@@ -414,29 +388,28 @@ function registerVolunteer(data) {
   let current = volunteerSheet();
   if (!current) {
     current = SPREADSHEET.insertSheet("Volunteers");
-    current.appendRow(["Name", "Branch", "Semester", "Phone", "Password", "Status", "Timestamp", "QR URL"]);
+    current.appendRow(["Name", "Branch", "Semester", "Phone", "Password", "Status", "Time", "QR URL"]);
   }
-  let headers = headersOf(current);
-  if (col(headers, ["QR URL", "QR Code URL"]) < 0) {
-    current.insertColumnAfter(current.getLastColumn());
-    current.getRange(1, current.getLastColumn()).setValue("QR URL");
-  }
+  
   if (findVolunteer(phone)) return fail("Ye phone number pehle se registered hai.");
 
   let qrUrl = "";
   if (data.qrFileData) {
     qrUrl = saveDriveFile(data.qrFileData, data.qrFileName, data.qrFileMimeType, true, QR_FOLDER_ID || MEDIA_FOLDER_ID);
   }
+
+  // Exact sequence match: Name, Branch, Semester, Phone, Password (plaintext), Status, Time, QR URL
   current.appendRow([
     name,
     text(data.branch, 40),
     text(data.semester, 20),
     phone,
-    makePasswordHash(password),
+    password, // Plaintext password saved directly in sheet
     "Pending",
     new Date(),
     qrUrl
   ]);
+  
   return ok();
 }
 
@@ -471,10 +444,6 @@ function deleteVolunteer(data) {
   return ok();
 }
 
-// ---------------------------------------------------------------------------
-// Dashboard data
-// ---------------------------------------------------------------------------
-
 function getData() {
   const result = {};
   ensureParticipantSheet();
@@ -490,14 +459,7 @@ function getVolunteerDashboard(session) {
   const current = volunteerSheet();
   if (!current) return ok({ volunteer: null, stats: { total: 0, entries: 0 }, volunteers: [] });
   const headers = headersOf(current);
-  const totals = {};
-  collectionRowsWithOwner().forEach(item => {
-    const phone = phoneOf(item.phone);
-    if (!phone) return;
-    if (!totals[phone]) totals[phone] = { total: 0, entries: 0 };
-    totals[phone].total += Number(item.amount) || 0;
-    totals[phone].entries += 1;
-  });
+  const totals = volunteerMetricsByPhone();
   const volunteers = current.getDataRange().getValues().slice(1).map(row => {
     const phone = phoneOf(valueAt(row, headers, ["Phone", "Phone Number"]));
     const stats = totals[phone] || { total: 0, entries: 0 };
@@ -507,11 +469,12 @@ function getVolunteerDashboard(session) {
       branch: valueAt(row, headers, ["Branch"]),
       semester: valueAt(row, headers, ["Semester"]),
       status: valueAt(row, headers, ["Status", "Approval Status"]),
-      qrUrl: valueAt(row, headers, ["QR URL", "QR Code URL"]),
+      qrUrl: valueAt(row, headers, ["QRURL", "QR URL", "QR Code URL"]),
       total: stats.total,
       entries: stats.entries
     };
-  }).filter(item => String(item.status).toLowerCase() === "approved");
+  }).filter(item => String(item.status).toLowerCase() === "approved")
+    .sort((left, right) => (Number(right.total) || 0) - (Number(left.total) || 0) || (String(left.name || "").localeCompare(String(right.name || ""))));
   const phone = session && session.role === "Volunteer" ? phoneOf(session.phone) : "";
   return ok({
     volunteer: phone ? volunteers.find(item => item.phone === phone) || null : null,
@@ -520,14 +483,88 @@ function getVolunteerDashboard(session) {
   });
 }
 
-function collectionRowsWithOwner() {
+function normalizeCollectionOwnerColumns() {
   const current = sheet("Collection");
+  if (!current || current.getLastRow() < 2) return current;
+
+  const headers = headersOf(current);
+  const phoneIndex = col(headers, ["Collected By Phone", "Volunteer Phone"]);
+  const nameIndex = col(headers, ["Collected By", "Volunteer Name"]);
+  if (phoneIndex < 0 || nameIndex < 0 || phoneIndex === nameIndex) return current;
+
+  const rows = current.getDataRange().getValues();
+  rows.slice(1).forEach((row, offset) => {
+    const rawPhone = row[phoneIndex];
+    const rawName = row[nameIndex];
+    const hasPhoneValue = phoneOf(rawPhone) !== "";
+    const hasNameValueAsPhone = phoneOf(rawName) !== "" && String(rawName).trim() !== "";
+    if (!hasPhoneValue && hasNameValueAsPhone) {
+      current.getRange(offset + 2, phoneIndex + 1).setValue(rawName);
+      current.getRange(offset + 2, nameIndex + 1).setValue(rawPhone);
+    }
+  });
+
+  return current;
+}
+
+function collectionRowsWithOwner() {
+  const current = normalizeCollectionOwnerColumns();
   if (!current || current.getLastRow() < 2) return [];
   const headers = headersOf(current);
-  return current.getDataRange().getValues().slice(1).map(row => ({
-    amount: valueAt(row, headers, ["Amount"]),
-    phone: valueAt(row, headers, ["Collected By Phone", "Volunteer Phone"])
-  }));
+  return current.getDataRange().getValues().slice(1).map(row => {
+    const rawPhone = valueAt(row, headers, ["Collected By Phone", "Volunteer Phone"]);
+    const rawName = valueAt(row, headers, ["Collected By", "Volunteer Name"]);
+    const fixedPhone = phoneOf(rawPhone) || (phoneOf(rawName) || "");
+    const fixedName = text(rawName, 120) || text(rawPhone, 120);
+    return {
+      amount: valueAt(row, headers, ["Amount"]),
+      phone: fixedPhone,
+      name: fixedName,
+      settled: String(valueAt(row, headers, ["Settled", "Settlement Status"])).trim().toLowerCase() === "yes"
+    };
+  });
+}
+
+function settleVolunteerCollection(data) {
+  const targetPhone = phoneOf(data.phone);
+  const targetName = text(data.name, 120);
+  const current = sheet("Collection");
+  if (!current || current.getLastRow() < 2) return ok({ cleared: 0 });
+
+  ensureCollectionSheet();
+  let headers = headersOf(current);
+  let settledIndex = col(headers, ["Settled", "Settlement Status"]);
+  let settledAtIndex = col(headers, ["Settled At", "Settlement Date"]);
+  if (settledIndex < 0) {
+    current.insertColumnAfter(current.getLastColumn());
+    current.getRange(1, current.getLastColumn()).setValue("Settled");
+    headers = headersOf(current);
+    settledIndex = col(headers, ["Settled", "Settlement Status"]);
+  }
+  if (settledAtIndex < 0) {
+    current.insertColumnAfter(current.getLastColumn());
+    current.getRange(1, current.getLastColumn()).setValue("Settled At");
+    headers = headersOf(current);
+    settledAtIndex = col(headers, ["Settled At", "Settlement Date"]);
+  }
+  const rows = current.getDataRange().getValues();
+  let settledCount = 0;
+
+  rows.slice(1).forEach((row, index) => {
+    const alreadySettled = String(row[settledIndex] || "").trim().toLowerCase() === "yes";
+    if (alreadySettled) return;
+    const rowPhone = phoneOf(valueAt(row, headers, ["Collected By Phone", "Volunteer Phone"]));
+    const rowName = text(valueAt(row, headers, ["Collected By", "Volunteer Name"]), 120);
+    const samePhone = targetPhone && rowPhone === targetPhone;
+    const sameName = !targetPhone && targetName && normalizeVolunteerName(rowName) === normalizeVolunteerName(targetName);
+    if (samePhone || sameName) {
+      current.getRange(index + 2, settledIndex + 1).setValue("Yes");
+      if (settledAtIndex >= 0) current.getRange(index + 2, settledAtIndex + 1).setValue(new Date());
+      settledCount += 1;
+    }
+  });
+
+  return ok({ cleared: settledCount });
 }
 
 function ensureParticipantSheet() {
@@ -651,10 +688,6 @@ function ensureTaskSheet() {
   return current;
 }
 
-// ---------------------------------------------------------------------------
-// Feedback
-// ---------------------------------------------------------------------------
-
 function getFeedback() {
   const feedbacks = dataRows("Feedback").map((row, index) => ({
     rowIndex: index + 2,
@@ -672,7 +705,7 @@ function submitFeedback(data) {
 
   let current = sheet("Feedback");
   if (!current) {
-    current = SPREADSHEET.insertSheet("Feedback");
+    current = SPRESSHEET.insertSheet("Feedback");
     current.appendRow(["Name", "Message", "Timestamp"]);
   }
   current.appendRow([name, message, new Date()]);
@@ -688,14 +721,6 @@ function deleteFeedback(data) {
   return ok();
 }
 
-// ---------------------------------------------------------------------------
-// Collection
-// ---------------------------------------------------------------------------
-
-/**
- * Volunteer ke liye branch/semester session se liye jate hain, form se nahi —
- * taki koi request badal kar dusri branch ki entry na kar sake.
- */
 function saveCollection(data, session, updating) {
   const isVolunteer = session && session.role === "Volunteer";
   const branch = isVolunteer ? text(session.branch, 40) : text(data.branch, 40);
@@ -710,18 +735,43 @@ function saveCollection(data, session, updating) {
     return fail("Volunteer Faculty entry nahi kar sakta; 5th semester volunteer Lateral Entry bhi nahi bhar sakta.");
   }
 
-  ensureCollectionSheet();
-  const ownerPhone = isVolunteer ? phoneOf(session.phone) : text(data.collectedByPhone, 20);
+  const current = ensureCollectionSheet();
+  const ownerPhone = isVolunteer ? phoneOf(session.phone) : phoneOf(data.collectedByPhone);
   const ownerName = isVolunteer ? text(session.name, 120) : text(data.collectedByName, 120);
-  const values = [name, branch, semester, category, amount, text(data.mode, 20) || "Cash", new Date(), ownerPhone, ownerName];
-  return updating ? updateRow("Collection", data.rowIndex, values) : addRow("Collection", values);
+  const headers = headersOf(current);
+  const values = current.getLastColumn() > 0 ? Array(current.getLastColumn()).fill("") : [];
+  const setValue = (names, value) => {
+    const index = col(headers, names);
+    if (index >= 0) values[index] = value;
+  };
+
+  setValue(["Name", "Student Name", "Participant Name"], name);
+  setValue(["Branch"], branch);
+  setValue(["Semester", "Sem"], semester);
+  setValue(["Category"], category);
+  setValue(["Amount", "Collected Amount"], amount);
+  setValue(["Mode", "Payment Mode"], text(data.mode, 20) || "Cash");
+  setValue(["Timestamp", "Date", "Date / Time", "Created At"], new Date());
+  setValue(["Collected By Phone", "Volunteer Phone"], ownerPhone);
+  setValue(["Collected By", "Volunteer Name", "Collector"], ownerName);
+  setValue(["Settled", "Settlement Status"], "");
+  setValue(["Settled At", "Settlement Date"], "");
+
+  if (updating) {
+    const sheetRow = Number(data.rowIndex) + 1;
+    if (!data.rowIndex || sheetRow <= 1 || sheetRow > current.getLastRow()) return fail("Row not found");
+    current.getRange(sheetRow, 1, 1, values.length).setValues([values]);
+    return ok();
+  }
+  current.appendRow(values);
+  return ok();
 }
 
 function ensureCollectionSheet() {
   let current = sheet("Collection");
   if (!current) {
     current = SPREADSHEET.insertSheet("Collection");
-    current.appendRow(["Name", "Branch", "Semester", "Category", "Amount", "Mode", "Timestamp", "Collected By Phone", "Collected By"]);
+    current.appendRow(["Name", "Branch", "Semester", "Category", "Amount", "Mode", "Timestamp", "Collected By Phone", "Collected By", "Settled", "Settled At"]);
     return current;
   }
   let headers = headersOf(current);
@@ -734,12 +784,18 @@ function ensureCollectionSheet() {
     current.insertColumnAfter(current.getLastColumn());
     current.getRange(1, current.getLastColumn()).setValue("Collected By");
   }
+  headers = headersOf(current);
+  if (col(headers, ["Settled", "Settlement Status"]) < 0) {
+    current.insertColumnAfter(current.getLastColumn());
+    current.getRange(1, current.getLastColumn()).setValue("Settled");
+  }
+  headers = headersOf(current);
+  if (col(headers, ["Settled At", "Settlement Date"]) < 0) {
+    current.insertColumnAfter(current.getLastColumn());
+    current.getRange(1, current.getLastColumn()).setValue("Settled At");
+  }
   return current;
 }
-
-// ---------------------------------------------------------------------------
-// Expenses
-// ---------------------------------------------------------------------------
 
 function saveExpense(data, updating) {
   const item = text(data.item, 200);
@@ -750,8 +806,6 @@ function saveExpense(data, updating) {
   if (amount === null) return fail("Amount ek valid number hona chahiye.");
   if (!workerPhone) return fail("Worker ka phone number exact 10 digits ka hona chahiye.");
 
-  // Nayi file di gayi ho to upload karte hain; warna edit karte waqt purana
-  // bill link waise ka waisa rehta hai (pehle wo delete ho jata tha).
   let fileUrl = text(data.fileUrl, 500);
   if (data.fileData && data.fileName) {
     fileUrl = saveDriveFile(data.fileData, data.fileName, data.fileMimeType);
@@ -771,10 +825,6 @@ function saveExpense(data, updating) {
   ];
   return updating ? updateRow("Expenses", data.rowIndex, values) : addRow("Expenses", values);
 }
-
-// ---------------------------------------------------------------------------
-// Participants, tasks and meetings
-// ---------------------------------------------------------------------------
 
 function addParticipant(data) {
   const name = text(data.name, 120);
@@ -905,10 +955,6 @@ function addMeeting(data) {
   ]);
 }
 
-// ---------------------------------------------------------------------------
-// Media uploads
-// ---------------------------------------------------------------------------
-
 function uploadMedia(data) {
   const title = text(data.title, 200);
   if (!title) return fail("Media title zaroori hai.");
@@ -916,11 +962,6 @@ function uploadMedia(data) {
   return addRow("Media", [title, url, text(data.mediaType, 20) || "Photo", new Date()]);
 }
 
-/**
- * Base64 file ko Drive me save karta hai.
- * Note: file "anyone with the link" par share hoti hai, kyunki gallery aur bill
- * links public page par dikhte hain. Isliye private documents yahan upload na karein.
- */
 function saveDriveFile(base64, fileName, mimeType, imageOnly, folderId) {
   const type = text(mimeType, 100) || "application/octet-stream";
   if (imageOnly ? !/^image\//i.test(type) : !ALLOWED_UPLOAD_TYPES.test(type)) {
@@ -936,10 +977,6 @@ function saveDriveFile(base64, fileName, mimeType, imageOnly, folderId) {
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   return file.getUrl();
 }
-
-// ---------------------------------------------------------------------------
-// Participant status lookup
-// ---------------------------------------------------------------------------
 
 function checkStatus(phone) {
   const wanted = phoneOf(phone);

@@ -189,7 +189,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbzj2L27mBLI8q0bSY0NQRvJdmXrB3_4FuQ8ctjlWJVfHVLoi-_h8TcgAigHYYXPAJWz/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwE0VZOZj5v0Hq6i8bwtyoMHrlsBaC7aYb-D8kQcIGvIsCq5Lq430en2XGAasqcXJGw/exec";
 const DEFAULT_QR_URL = "https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&sz=w1000";
 
 const STORE_PREFIX = "em.";
@@ -200,6 +200,8 @@ const auth = {
     role:        () => localStorage.getItem(STORE_PREFIX + "role") || "",
     branch:      () => localStorage.getItem(STORE_PREFIX + "branch") || "",
     semester:    () => localStorage.getItem(STORE_PREFIX + "semester") || "",
+    name:        () => localStorage.getItem(STORE_PREFIX + "name") || "",
+    phone:       () => localStorage.getItem(STORE_PREFIX + "phone") || "",
     qrUrl:       () => localStorage.getItem(STORE_PREFIX + "qrUrl") || "",
     isAdmin:     () => auth.role() === "Admin",
     isVolunteer: () => auth.role() === "Volunteer"
@@ -388,15 +390,18 @@ async function saveCollection(event) {
     const button = $("saveButton");
     button.disabled = true;
     try {
-        await apiPost(editingIndex === null ? "addCollection" : "updateCollection", {
+        const payload = {
             name: $("name").value,
             branch: $("branch").value,
             semester: $("semester").value,
             category: $("category").value,
             amount: $("amount").value,
             mode: $("mode").value,
-            rowIndex: editingIndex
-        });
+            rowIndex: editingIndex,
+            collectedByPhone: auth.isVolunteer() ? auth.phone() : "",
+            collectedByName: auth.isVolunteer() ? auth.name() : ""
+        };
+        await apiPost(editingIndex === null ? "addCollection" : "updateCollection", payload);
         alert(editingIndex === null ? "Saved Successfully!" : "Updated Successfully!");
         resetCollectionEdit();
         localStorage.removeItem(CACHE_KEY);

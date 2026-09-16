@@ -230,7 +230,7 @@
     </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbz9I7g6gFYA9WfhwzhGJwZ1hils0BIFTEPcqbyKXipdxiuqOT20N0UAWLdF7OTyP0wJ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwE0VZOZj5v0Hq6i8bwtyoMHrlsBaC7aYb-D8kQcIGvIsCq5Lq430en2XGAasqcXJGw/exec";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const STORE_PREFIX = "em.";
 
@@ -240,6 +240,7 @@ const auth = {
     branch:   () => localStorage.getItem(STORE_PREFIX + "branch") || "",
     semester: () => localStorage.getItem(STORE_PREFIX + "semester") || "",
     name:     () => localStorage.getItem(STORE_PREFIX + "name") || "",
+    phone:    () => localStorage.getItem(STORE_PREFIX + "phone") || "",
     qrUrl:    () => localStorage.getItem(STORE_PREFIX + "qrUrl") || "",
     isAdmin:  () => auth.role() === "Admin",
 
@@ -508,17 +509,34 @@ function driveImageUrl(value) {
 }
 
 function renderVolunteerDashboard(data) {
-    const volunteer = data.volunteer;
-    const stats = data.stats || { total: 0, entries: 0 };
+    const ranking = Array.isArray(data.volunteers) ? data.volunteers : [];
+    const fallbackVolunteer = ranking.find(item => String(item.phone || "") === String(auth.phone() || ""))
+        || ranking.find(item => String(item.name || "").toLowerCase() === String(auth.name() || "").toLowerCase());
+    const volunteer = data.volunteer || fallbackVolunteer || {
+        name: auth.name() || "Volunteer",
+        phone: auth.phone() || "",
+        branch: auth.branch() || "",
+        semester: auth.semester() || "",
+        qrUrl: auth.qrUrl() || ""
+    };
+    const stats = data.stats || fallbackVolunteer || { total: 0, entries: 0 };
+    const rank = ranking.length
+        ? ranking.findIndex(item => String(item.phone || "") === String(volunteer?.phone || "")) + 1
+        : 0;
+
     if (!volunteer) {
         $("volunteerDashboard").innerHTML = `<p class="muted">Volunteer profile nahi mila.</p>`;
         return;
     }
+
     const qr = driveImageUrl(volunteer.qrUrl || auth.qrUrl());
     $("volunteerDashboard").innerHTML = `<div class="grid gap-4 md:grid-cols-[1fr_190px]">
         <div>
             <h3 class="font-display text-lg font-extrabold text-ink-900">${escapeHtml(volunteer.name)}</h3>
             <p class="muted mt-1">${escapeHtml(volunteer.branch)} · ${escapeHtml(volunteer.semester)} · ${escapeHtml(volunteer.phone)}</p>
+            <div class="mt-3 inline-flex rounded-full bg-gradient-to-r from-brand-600 to-accent-600 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+                ${rank > 0 ? `Rank #${rank}` : "No rank yet"}
+            </div>
             <div class="mt-4 grid grid-cols-2 gap-3">
                 <div class="rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-200"><p class="text-[11px] font-bold uppercase text-emerald-700">Total Collection</p><p class="mt-1 text-2xl font-extrabold text-emerald-800">₹ ${Number(stats.total || 0).toLocaleString("en-IN")}</p></div>
                 <div class="rounded-xl bg-brand-50 p-4 ring-1 ring-brand-200"><p class="text-[11px] font-bold uppercase text-brand-700">Entries</p><p class="mt-1 text-2xl font-extrabold text-brand-800">${escapeHtml(stats.entries || 0)}</p></div>
@@ -529,9 +547,9 @@ function renderVolunteerDashboard(data) {
 }
 
 function renderAdminCollectionSummary(data) {
-    const volunteers = data.volunteers || [];
+    const volunteers = [...(data.volunteers || [])].sort((left, right) => (Number(right.total) || 0) - (Number(left.total) || 0) || (String(left.name || "").localeCompare(String(right.name || ""))));
     $("adminCollectionSummary").innerHTML = volunteers.length
-        ? `<div class="overflow-x-auto"><table class="w-full text-left text-[13px]"><thead><tr class="bg-brand-50 text-[11px] uppercase text-brand-800"><th class="p-3">Volunteer</th><th class="p-3">Branch</th><th class="p-3">Entries</th><th class="p-3">Total Collection</th></tr></thead><tbody>${volunteers.map(volunteer => `<tr class="border-t border-brand-100"><td class="p-3 font-bold">${escapeHtml(volunteer.name)}</td><td class="p-3">${escapeHtml(volunteer.branch)} - ${escapeHtml(volunteer.semester)}</td><td class="p-3">${escapeHtml(volunteer.entries)}</td><td class="p-3 font-bold text-emerald-700">₹ ${Number(volunteer.total || 0).toLocaleString("en-IN")}</td></tr>`).join("")}</tbody></table></div>`
+    ? `<div class="overflow-x-auto"><table class="w-full text-left text-[13px]"><thead><tr class="bg-brand-50 text-[11px] uppercase text-brand-800"><th class="p-3">Rank</th><th class="p-3">Volunteer</th><th class="p-3">Branch</th><th class="p-3">Entries</th><th class="p-3">Total Collection</th><th class="p-3">Action</th></tr></thead><tbody>${volunteers.map((volunteer, index) => `<tr class="border-t border-brand-100"><td class="p-3 font-bold text-brand-700">#${index + 1}</td><td class="p-3 font-bold">${escapeHtml(volunteer.name)}</td><td class="p-3">${escapeHtml(volunteer.branch)} - ${escapeHtml(volunteer.semester)}</td><td class="p-3">${escapeHtml(volunteer.entries)}</td><td class="p-3 font-bold text-emerald-700">₹ ${Number(volunteer.total || 0).toLocaleString("en-IN")}</td><td class="p-3"><button type="button" class="btn btn-sm btn-warning" data-settle="${escapeHtml(volunteer.phone || "")}">Settle</button></td></tr>`).join("")}</tbody></table></div>`
         : `<p class="muted">Abhi approved volunteer collection record nahi hai.</p>`;
 }
 
@@ -553,7 +571,9 @@ async function loadApprovedVolunteers() {
     const container = $("approvedVolunteersList");
     try {
         const data = await apiGet("getApprovedVolunteers");
-        const volunteers = data.volunteers || [];
+        const volunteers = [...(data.volunteers || [])]
+            .sort((left, right) => (Number(right.total) || 0) - (Number(left.total) || 0) || (String(left.name || "").localeCompare(String(right.name || ""))))
+            .map((volunteer, index) => ({ ...volunteer, rank: index + 1 }));
         container.innerHTML = volunteers.length
             ? volunteers.map(volunteer => volunteerCard(volunteer, "approved")).join("")
             : `<p class="muted">Abhi koi approved volunteer nahi hai.</p>`;
@@ -567,6 +587,9 @@ function volunteerCard(volunteer, listType) {
     const phone = escapeHtml(volunteer.phone || "");
     const initial = escapeHtml(String(volunteer.name || "?").trim().charAt(0).toUpperCase() || "?");
     const isPending = listType === "pending";
+    const total = Number(volunteer.total || 0);
+    const entries = Number(volunteer.entries || 0);
+    const rank = Number(volunteer.rank || 0);
 
     const actions = isPending
         ? `<button type="button" class="btn btn-sm btn-success flex-1" data-approve="${phone}">Approve</button>
@@ -585,13 +608,15 @@ function volunteerCard(volunteer, listType) {
                 <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand-600 to-accent-600 font-display text-base font-bold text-white">${initial}</div>
                 <div class="min-w-0 flex-1">
                     <h3 class="truncate font-display text-[15px] font-bold text-ink-900">${escapeHtml(volunteer.name || "Unnamed Volunteer")}</h3>
-                    <span class="volunteer-id mt-1">${isPending ? "⏳ Pending" : "✓ Approved"}</span>
+                    <span class="volunteer-id mt-1">${isPending ? "⏳ Pending" : (rank > 0 ? `🏆 Rank #${rank}` : "✓ Approved")}</span>
                 </div>
             </div>
             <dl class="my-3 space-y-1 rounded-lg bg-brand-50 p-2.5 text-[13px]">
                 <div class="flex justify-between gap-2"><dt class="text-ink-500">Branch</dt><dd class="font-bold text-ink-900">${escapeHtml(volunteer.branch || "-")}</dd></div>
                 <div class="flex justify-between gap-2"><dt class="text-ink-500">Semester</dt><dd class="font-bold text-ink-900">${escapeHtml(volunteer.semester || "-")}</dd></div>
                 <div class="flex justify-between gap-2"><dt class="text-ink-500">Phone</dt><dd class="font-bold text-ink-900">${escapeHtml(volunteer.phone || "-")}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">Entries</dt><dd class="font-bold text-ink-900">${entries}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">Total</dt><dd class="font-bold text-emerald-700">₹ ${total.toLocaleString("en-IN")}</dd></div>
             </dl>
             <div class="flex gap-2">${actions}</div>
         </div>
@@ -599,14 +624,29 @@ function volunteerCard(volunteer, listType) {
 }
 
 document.addEventListener("click", event => {
-    const button = event.target.closest("[data-approve], [data-edit], [data-delete]");
+    const button = event.target.closest("[data-approve], [data-edit], [data-delete], [data-settle]");
     if (!button) return;
     const card = button.closest(".volunteer-card");
 
     if (button.dataset.approve !== undefined) approveVolunteer(button.dataset.approve);
     else if (button.dataset.edit !== undefined) editVolunteer(button.dataset.edit, card.dataset);
+    else if (button.dataset.settle !== undefined) settleVolunteerCollection(button.dataset.settle);
     else deleteVolunteer(button.dataset.delete);
 });
+
+async function settleVolunteerCollection(phone) {
+    if (!phone) return;
+    if (!confirm("Kya aap is volunteer ki collection settle karna chahte hain? Isse unka collection total zero ho jayega.")) return;
+
+    try {
+        await apiPost("settleVolunteerCollection", { phone });
+        alert("Volunteer collection settle ho gayi.");
+        loadCollectionDashboard();
+    } catch (error) {
+        console.error("Volunteer settle error:", error);
+        alert(error.message || "Collection settle nahi ho saka.");
+    }
+}
 
 async function approveVolunteer(phone) {
     try {

@@ -247,7 +247,7 @@
         <div id="section-about" class="section-content hidden">
             <div class="card">
                 <style>
-                    .event-manager-intro {
+                    .event-ma nager-intro {
                         font-family: Arial, sans-serif;
                         line-height: 1.6;
                         color: #1f2937;
@@ -434,7 +434,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbxyGvgn7YGgNzcziVWNPdktzglaD3hD6UAKbMiQjaU96xea1VACG-2nrQyphZv4iT6h/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzATMliiR8r8JGQqnW-ZL330s6R0KjHS8UXUqrqb8M5yavmkjIKxoM_VBk-afm2m6y7/exec";
 
 /* Hero carousel ki photos — nayi photo add karni ho to bas yahan ek line add karein. */
 const HERO_SLIDES = [
@@ -466,7 +466,9 @@ async function apiGet(action, params = {}) {
     const query = new URLSearchParams({ action, token: auth.token(), ...params });
     const response = await fetch(`${API_URL}?${query}`);
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
-    return response.json();
+    const result = await response.json();
+    handleSessionExpiry(result);
+    return result;
 }
 
 async function apiPost(action, payload = {}) {
@@ -476,8 +478,15 @@ async function apiPost(action, payload = {}) {
     });
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
     const result = await response.json();
+    handleSessionExpiry(result);
     if (result.status && result.status !== "success") throw new Error(result.message || "Request rejected");
     return result;
+}
+
+function handleSessionExpiry(result) {
+    if (!String(result && result.message || "").toLowerCase().includes("session expire")) return;
+    Object.keys(localStorage).filter(key => key.startsWith(STORE_PREFIX)).forEach(key => localStorage.removeItem(key));
+    if (!location.search.includes("session=expired")) location.href = "access.html?session=expired";
 }
 
 /* =========================================================================

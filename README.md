@@ -23,7 +23,7 @@ College Fresher & Farewell event ke liye live tracker portal — pure HTML + Tai
    - Value: apna PIN (jo bhi rakhna ho)
 
    > PIN ab kisi bhi HTML file me nahi hai. Use kabhi bhi HTML me wapas na daalein.
-  > QR files ko kisi specific Drive folder me rakhna ho to `Code.gs` me `QR_FOLDER_ID` me us folder ka ID daalein. Khali chhodne par Drive root folder use hoga.
+  > QR files ko kisi specific Drive folder me rakhna ho to `Code.gs` me `QR_FOLDER_ID` me us folder ka ID daalein. Dance ke MP3 songs ke liye `SONG_FOLDER_ID` set kar sakte hain. Khali chhodne par respective files Drive root folder me save hongi.
 3. **Deploy**: Deploy → New deployment → Web app
    - Execute as: **Me**
    - Who has access: **Anyone**

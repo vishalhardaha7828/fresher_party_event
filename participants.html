@@ -128,8 +128,7 @@
                         <option value="Civil">Civil</option>
                         <option value="CS">CS</option>
                         <option value="ME">ME</option>
-                        <option value="EE">EE</option>
-                        <option value="EC">EC</option>
+                        <option value="EE">AM</option>
                     </select>
                 </div>
                 <div>
@@ -139,7 +138,6 @@
                         <option value="1st">1st Semester</option>
                         <option value="3rd">3rd Semester</option>
                         <option value="5th">5th Semester</option>
-                        <option value="7th">7th Semester</option>
                     </select>
                 </div>
                 <div>
@@ -155,6 +153,11 @@
                 <div>
                     <label class="field-label" for="pPhone">Phone Number (10 Digits)</label>
                     <input type="tel" id="pPhone" class="input" maxlength="10" pattern="[0-9]{10}" required placeholder="10 digit mobile number">
+                </div>
+                <div id="songGroup" class="hidden md:col-span-2">
+                    <label class="field-label" for="pSong">Dance Song (sirf MP3)</label>
+                    <input type="file" id="pSong" class="input" accept="audio/mpeg,.mp3">
+                    <p class="mt-1.5 text-xs text-ink-500">Dance select karne par apna MP3 gana upload karein.</p>
                 </div>
                 <div class="md:col-span-2">
                     <button type="submit" id="savePartBtn" class="btn">Register Participant →</button>
@@ -177,12 +180,13 @@
                             <th>Semester</th>
                             <th>Event</th>
                             <th>Phone</th>
+                            <th>Song</th>
                             <th id="orderHeader" class="hidden">Program Order</th>
                             <th id="statusHeader" class="hidden">Status</th>
                         </tr>
                     </thead>
                     <tbody id="participantTableBody">
-                        <tr><td colspan="6" class="py-6 text-center">Loading data...</td></tr>
+                        <tr><td colspan="7" class="py-6 text-center">Loading data...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -193,7 +197,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbxyGvgn7YGgNzcziVWNPdktzglaD3hD6UAKbMiQjaU96xea1VACG-2nrQyphZv4iT6h/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzATMliiR8r8JGQqnW-ZL330s6R0KjHS8UXUqrqb8M5yavmkjIKxoM_VBk-afm2m6y7/exec";
 
 /* =========================================================================
    SESSION — sirf UI ke liye; asli permission Apps Script me check hoti hai.
@@ -214,7 +218,9 @@ async function apiGet(action, params = {}) {
     const query = new URLSearchParams({ action, token: auth.token(), ...params });
     const response = await fetch(`${API_URL}?${query}`);
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
-    return response.json();
+    const result = await response.json();
+    handleSessionExpiry(result);
+    return result;
 }
 
 async function apiPost(action, payload = {}) {
@@ -224,8 +230,15 @@ async function apiPost(action, payload = {}) {
     });
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
     const result = await response.json();
+    handleSessionExpiry(result);
     if (result.status && result.status !== "success") throw new Error(result.message || "Request rejected");
     return result;
+}
+
+function handleSessionExpiry(result) {
+    if (!String(result && result.message || "").toLowerCase().includes("session expire")) return;
+    Object.keys(localStorage).filter(key => key.startsWith(STORE_PREFIX)).forEach(key => localStorage.removeItem(key));
+    if (!location.search.includes("session=expired")) location.href = "access.html?session=expired";
 }
 
 /* =========================================================================
@@ -242,11 +255,13 @@ function escapeHtml(value) {
    ========================================================================= */
 const $ = id => document.getElementById(id);
 let participantRows = [];
+let participantHeaders = [];
 
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("[data-menu-toggle]").addEventListener("click", () => $("navLinks").classList.toggle("is-open"));
 
     $("pType").addEventListener("change", handleTypeChange);
+    $("pEvent").addEventListener("change", handleEventChange);
     $("participantForm").addEventListener("submit", submitParticipant);
     $("searchInput").addEventListener("input", renderTable);
     $("pPhone").addEventListener("input", event => {
@@ -279,6 +294,13 @@ function handleTypeChange() {
     $("pGroupMembers").required = isGroup;
 }
 
+function handleEventChange() {
+    const isDance = $("pEvent").value === "Dance";
+    $("songGroup").classList.toggle("hidden", !isDance);
+    $("pSong").required = isDance;
+    if (!isDance) $("pSong").value = "";
+}
+
 /* =========================================================================
    DATA
    ========================================================================= */
@@ -294,7 +316,15 @@ async function loadData() {
 
 function applyData(data) {
     participantRows = data.Participants || [];
+    participantHeaders = participantRows[0] || [];
     renderTable();
+}
+
+function participantValue(row, names) {
+    const index = names.map(name => participantHeaders.findIndex(header =>
+        String(header || "").toLowerCase().replace(/[\s_]+/g, "") === name.toLowerCase().replace(/[\s_]+/g, "")
+    )).find(index => index >= 0);
+    return index >= 0 ? row[index] : "";
 }
 
 function renderTable() {
@@ -305,18 +335,32 @@ function renderTable() {
     const visible = participantRows.slice(1)
         .map((row, offset) => ({ row, index: offset + 1 }))
         .filter(({ row }) => row[0])
-        .filter(({ row }) => [row[0], row[3], row[5], row[6]]
+        .filter(({ row }) => [
+            participantValue(row, ["Name", "Participant Name"]),
+            participantValue(row, ["Event"]),
+            participantValue(row, ["Type"]),
+            participantValue(row, ["Group Members"])
+        ]
             .map(value => String(value || "").toLowerCase())
             .some(value => value.includes(search)));
-    visible.sort((left, right) => (Number(left.row[8]) || left.index) - (Number(right.row[8]) || right.index));
+    visible.sort((left, right) =>
+        (Number(participantValue(left.row, ["Program Order", "Order", "Sequence"])) || left.index) -
+        (Number(participantValue(right.row, ["Program Order", "Order", "Sequence"])) || right.index)
+    );
 
     body.innerHTML = visible.length
         ? visible.map(({ row, index }) => participantRow(row, index)).join("")
-        : `<tr><td colspan="${auth.isAdmin() ? 8 : 6}" class="py-6 text-center text-ink-500">Koi participant nahi mila.</td></tr>`;
+        : `<tr><td colspan="${auth.isAdmin() ? 9 : 7}" class="py-6 text-center text-ink-500">Koi participant nahi mila.</td></tr>`;
 }
 
     function participantRow(row, index) {
-    const [name, branch, semester, event, phone, type, groupMembers] = row;
+    const name = participantValue(row, ["Name", "Participant Name"]);
+    const branch = participantValue(row, ["Branch"]);
+    const semester = participantValue(row, ["Semester", "Sem"]);
+    const event = participantValue(row, ["Event"]);
+    const phone = participantValue(row, ["Phone", "Phone Number"]);
+    const type = participantValue(row, ["Type"]);
+    const groupMembers = participantValue(row, ["Group Members"]);
     const isGroup = type === "Group";
 
     const badge = isGroup
@@ -330,15 +374,20 @@ function renderTable() {
     const order = auth.isAdmin()
         ? `<td><div class="flex items-center gap-1.5">
             <button type="button" class="btn btn-sm btn-muted" data-order="up" data-phone="${escapeHtml(phone)}" title="Upar karein">↑</button>
-            <span class="px-1 font-bold">${escapeHtml(row[8] || index + 1)}</span>
+            <span class="px-1 font-bold">${escapeHtml(participantValue(row, ["Program Order", "Order", "Sequence"]) || index + 1)}</span>
             <button type="button" class="btn btn-sm btn-muted" data-order="down" data-phone="${escapeHtml(phone)}" title="Neeche karein">↓</button>
         </div></td>`
         : "";
     const status = auth.isAdmin()
-        ? (row[9] === "Completed"
+        ? (participantValue(row, ["Program Status", "Status"]) === "Completed"
             ? `<td><span class="badge badge-completed">✓ Completed</span></td>`
             : `<td><button type="button" class="btn btn-sm btn-success" data-complete-phone="${escapeHtml(phone)}">Complete</button></td>`)
         : "";
+    const songUrl = participantValue(row, ["Song URL", "Dance Song", "Song"]);
+    const songId = getDriveFileId(songUrl);
+    const song = auth.isAdmin() && songId
+        ? `<td><a href="${escapeHtml(getDownloadUrl(songId))}" download target="_blank" rel="noopener noreferrer" class="font-semibold text-brand-700 hover:underline">📥 Download MP3</a></td>`
+        : `<td>${songUrl ? "MP3 uploaded" : "-"}</td>`;
 
     return `<tr>
         <td class="font-semibold text-ink-900">${escapeHtml(name || "-")}${members}</td>
@@ -347,9 +396,19 @@ function renderTable() {
         <td>${escapeHtml(semester || "-")}</td>
         <td>${escapeHtml(event || "-")}</td>
         <td class="whitespace-nowrap">${escapeHtml(phone || "-")}</td>
+        ${song}
         ${order}
         ${status}
     </tr>`;
+}
+
+function getDriveFileId(url) {
+    const match = String(url || "").match(/(?:\/d\/|id=|[?&]fileId=)([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : "";
+}
+
+function getDownloadUrl(fileId) {
+    return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`;
 }
 
 async function changeParticipantOrder(phone, direction) {
@@ -391,18 +450,28 @@ async function submitParticipant(event) {
     button.innerText = "Registering...";
     try {
         const type = $("pType").value;
+        const eventName = $("pEvent").value;
+        const song = $("pSong").files[0];
+        if (eventName === "Dance" && !song) throw new Error("Dance participant ke liye MP3 song select karein.");
+        if (song && (!/^audio\/(mpeg|mp3)$/i.test(song.type) || !/\.mp3$/i.test(song.name))) {
+            throw new Error("Sirf MP3 file upload karein.");
+        }
+        const songData = song ? await readFileAsBase64(song) : "";
         await apiPost("addParticipant", {
             name: $("pName").value,
             branch: $("pBranch").value,
             semester: $("pSemester").value,
-            event: $("pEvent").value,
+            event: eventName,
             phone,
             type,
-            groupMembers: type === "Group" ? $("pGroupMembers").value : ""
+            groupMembers: type === "Group" ? $("pGroupMembers").value : "",
+            songData,
+            songName: song ? song.name : ""
         });
         alert("Registered Successfully!");
         $("participantForm").reset();
         handleTypeChange();
+        handleEventChange();
         localStorage.removeItem(CACHE_KEY);
         if (auth.isAdmin()) loadData();
     } catch (error) {
@@ -412,6 +481,15 @@ async function submitParticipant(event) {
         button.disabled = false;
         button.innerText = "Register Participant →";
     }
+}
+
+function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+        reader.onerror = () => reject(new Error("Song read nahi ho saka."));
+        reader.readAsDataURL(file);
+    });
 }
 </script>
 </body>

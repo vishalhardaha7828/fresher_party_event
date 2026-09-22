@@ -224,13 +224,13 @@
             <input type="text" id="mediaTitle" class="input" maxlength="200" placeholder="Jaise: Cultural Night Dance">
             <label class="field-label" for="mediaFile">Media File / Link:</label>
             <input type="file" id="mediaFile" class="input" accept="image/*,video/*">
-            <p class="muted mt-2 rounded-lg bg-amber-50 p-2.5 ring-1 ring-amber-200">⚠️ Maximum 5 MB. Upload ki gayi file link se kisi ko bhi dikh sakti hai.</p>
+            <p class="muted mt-2 rounded-lg bg-amber-50 p-2.5 ring-1 ring-amber-200">⚠️ Upload ki gayi file link se kisi ko bhi dikh sakti hai.</p>
             <button type="button" id="uploadMediaBtn" class="btn">Upload Media</button>
         </div>
     </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxyGvgn7YGgNzcziVWNPdktzglaD3hD6UAKbMiQjaU96xea1VACG-2nrQyphZv4iT6h/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzATMliiR8r8JGQqnW-ZL330s6R0KjHS8UXUqrqb8M5yavmkjIKxoM_VBk-afm2m6y7/exec";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const STORE_PREFIX = "em.";
 
@@ -265,7 +265,9 @@ async function apiGet(action, params = {}) {
     const query = new URLSearchParams({ action, token: auth.token(), ...params });
     const response = await fetch(`${API_URL}?${query}`);
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
-    return response.json();
+    const result = await response.json();
+    handleSessionExpiry(result);
+    return result;
 }
 
 async function apiPost(action, payload = {}) {
@@ -275,8 +277,15 @@ async function apiPost(action, payload = {}) {
     });
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
     const result = await response.json();
+    handleSessionExpiry(result);
     if (result.status && result.status !== "success") throw new Error(result.message || "Request rejected");
     return result;
+}
+
+function handleSessionExpiry(result) {
+    if (!String(result && result.message || "").toLowerCase().includes("session expire")) return;
+    auth.clear();
+    if (!location.search.includes("session=expired")) location.href = "access.html?session=expired";
 }
 
 const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
@@ -744,8 +753,6 @@ async function uploadAdminMedia() {
     const title = $("mediaTitle").value.trim();
     const file = $("mediaFile").files[0];
     if (!title || !file) { alert("Title aur file select karein!"); return; }
-    if (file.size > MAX_UPLOAD_BYTES) { alert("File 5 MB se chhoti honi chahiye."); return; }
-
     const button = $("uploadMediaBtn");
     button.disabled = true;
     button.innerText = "Uploading...";

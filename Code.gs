@@ -3,14 +3,17 @@
  */
 
 const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
-const MEDIA_FOLDER_ID = "";
+const MEDIA_FOLDER_ID = "15klBTOvfsAOlDw4xm9WlFa9peC5qOw_O";
+const BILL_FOLDER_ID = "1KlzRbFcBaxNxb1ji9WLvI45keFn0NWXK";
 const QR_FOLDER_ID = "1btQmTpV23_PH8jX3sligmVdmggOAsjF5";
+const SONG_FOLDER_ID = "1_Od2xPjjCR3_dBbrGlGWRzb9r1cpGEns";
 
 const SESSION_TTL_SECONDS = 6 * 60 * 60;
 const FAILED_LOGIN_DELAY_MS = 400;
 const MAX_TEXT_LENGTH = 500;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_UPLOAD_TYPES = /^(image|video)\//i;
+const ALLOWED_SONG_TYPES = /^(audio\/mpeg|audio\/mp3)$/i;
 
 const ACTION_ROLES = {
   getVolunteerDashboard: ["Admin", "Volunteer"],
@@ -675,6 +678,11 @@ function ensureParticipantSheet() {
         .setValues(Array.from({ length: rowCount }, () => ["Pending"]));
     }
   }
+  headers = headersOf(current);
+  if (col(headers, ["Song URL", "Dance Song", "Song"]) < 0) {
+    current.insertColumnAfter(current.getLastColumn());
+    current.getRange(1, current.getLastColumn()).setValue("Song URL");
+  }
   normalizeParticipantOrder(current);
   return current;
 }
@@ -889,7 +897,7 @@ function saveExpense(data, updating) {
 
   let fileUrl = text(data.fileUrl, 500);
   if (data.fileData && data.fileName) {
-    fileUrl = saveDriveFile(data.fileData, data.fileName, data.fileMimeType);
+    fileUrl = saveDriveFile(data.fileData, data.fileName, data.fileMimeType, false, BILL_FOLDER_ID);
   } else if (updating && !fileUrl) {
     fileUrl = existingCellValue("Expenses", data.rowIndex, 6);
   }
@@ -916,7 +924,10 @@ function addParticipant(data) {
   const current = ensureParticipantSheet() || sheet("Participants");
   if (!current) {
     const created = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Participants");
-    created.appendRow(["Name", "Branch", "Semester", "Event", "Phone", "Type", "Group Members", "Timestamp", "Program Order"]);
+    created.appendRow([
+      "Name", "Branch", "Semester", "Event", "Phone", "Type", "Group Members",
+      "Timestamp", "Program Order", "Program Status", "Song URL"
+    ]);
     return addParticipant(data);
   }
   normalizeParticipantOrder(current);
@@ -926,19 +937,37 @@ function addParticipant(data) {
       ? current.getRange(2, orderIndex + 1, current.getLastRow() - 1, 1).getValues().flat().map(Number).filter(isFinite)
       : [];
   const nextOrder = (existingOrders.length ? Math.max.apply(null, existingOrders) : 0) + 1;
-  current.appendRow([
-    name,
-    text(data.branch, 40),
-    text(data.semester, 20),
-    text(data.event, 60),
-    phone,
-    text(data.type, 20) || "Solo",
-    text(data.groupMembers, 500),
-    new Date(),
-    nextOrder,
-    "Pending"
-  ]);
-  return ok();
+  const eventName = text(data.event, 60);
+  let songUrl = "";
+  if (eventName.toLowerCase() === "dance") {
+    if (!data.songData || !data.songName) return fail("Dance participant ke liye MP3 song zaroori hai.");
+    if (!/\.mp3$/i.test(String(data.songName))) return fail("Sirf MP3 song upload karein.");
+    const songName = text(name.replace(/[\\/:*?"<>|]/g, "_") + ".mp3", 200);
+    songUrl = saveDriveFile(data.songData, songName, "audio/mpeg", false, SONG_FOLDER_ID || MEDIA_FOLDER_ID, ALLOWED_SONG_TYPES, null);
+  }
+  const participantValues = Array(current.getLastColumn()).fill("");
+  const setParticipantValue = (names, value) => {
+    const index = col(headers, names);
+    if (index >= 0) participantValues[index] = value;
+  };
+  setParticipantValue(["Name", "Participant Name"], name);
+  setParticipantValue(["Branch"], text(data.branch, 40));
+  setParticipantValue(["Semester", "Sem"], text(data.semester, 20));
+  setParticipantValue(["Event"], eventName);
+  setParticipantValue(["Phone", "Phone Number"], phone);
+  setParticipantValue(["Type"], text(data.type, 20) || "Solo");
+  setParticipantValue(["Group Members"], text(data.groupMembers, 500));
+  setParticipantValue(["Timestamp", "Created At", "Date"], new Date());
+  setParticipantValue(["Program Order", "Order", "Sequence"], nextOrder);
+  setParticipantValue(["Program Status", "Status"], "Pending");
+  setParticipantValue(["Song URL", "Dance Song", "Song"], songUrl);
+  current.getRange(current.getLastRow() + 1, 1, 1, participantValues.length).setValues([participantValues]);
+  const savedRow = current.getRange(current.getLastRow(), 1, 1, current.getLastColumn()).getValues()[0];
+  const savedSongUrl = valueAt(savedRow, headers, ["Song URL", "Dance Song", "Song"]);
+  if (eventName.toLowerCase() === "dance" && songUrl && String(savedSongUrl) !== String(songUrl)) {
+    throw new Error("Participant save ho gaya, lekin Song URL column me save nahi hua.");
+  }
+  return ok({ songUrl: songUrl });
 }
 
 function completeParticipant(data) {
@@ -1039,23 +1068,36 @@ function addMeeting(data) {
 function uploadMedia(data) {
   const title = text(data.title, 200);
   if (!title) return fail("Media title zaroori hai.");
-  const url = saveDriveFile(data.fileData, data.fileName, data.fileMimeType);
+  const url = saveDriveFile(data.fileData, data.fileName, data.fileMimeType, false, MEDIA_FOLDER_ID, null, null);
   return addRow("Media", [title, url, text(data.mediaType, 20) || "Photo", new Date()]);
 }
 
-function saveDriveFile(base64, fileName, mimeType, imageOnly, folderId) {
+function authorizeDriveAccess() {
+  const folder = DriveApp.getFolderById(SONG_FOLDER_ID);
+  Logger.log("Drive access OK: " + folder.getName());
+}
+
+function saveDriveFile(base64, fileName, mimeType, imageOnly, folderId, allowedTypes, maxBytes) {
   const type = text(mimeType, 100) || "application/octet-stream";
-  if (imageOnly ? !/^image\//i.test(type) : !ALLOWED_UPLOAD_TYPES.test(type)) {
-    throw new Error(imageOnly ? "Sirf QR image upload karein." : "Sirf image ya video upload ki ja sakti hai.");
+  const allowed = allowedTypes || (imageOnly ? /^image\//i : ALLOWED_UPLOAD_TYPES);
+  if (!allowed.test(type)) {
+    throw new Error(imageOnly ? "Sirf QR image upload karein." : allowedTypes ? "Sirf MP3 song upload karein." : "Sirf image ya video upload ki ja sakti hai.");
   }
 
   const bytes = Utilities.base64Decode(String(base64 || ""));
-  if (bytes.length > MAX_UPLOAD_BYTES) throw new Error("File 5 MB se chhoti honi chahiye.");
+  if (maxBytes !== null && bytes.length > (maxBytes || MAX_UPLOAD_BYTES)) {
+    throw new Error("File 5 MB se chhoti honi chahiye.");
+  }
 
   const blob = Utilities.newBlob(bytes, type, text(fileName, 200) || "upload");
   const folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
   const file = folder.createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (error) {
+    // Workspace policy may block public sharing, but the owner can still use the file URL.
+    console.warn("Drive sharing update skipped: " + error);
+  }
   return file.getUrl();
 }
 

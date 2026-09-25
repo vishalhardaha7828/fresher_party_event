@@ -230,9 +230,11 @@
     </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzATMliiR8r8JGQqnW-ZL330s6R0KjHS8UXUqrqb8M5yavmkjIKxoM_VBk-afm2m6y7/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx-00e2KP7ePyww0yoW5bXWA_6rOq3JNzJ-rzAlRk-S9h0Bf6XMcrcMDfj9nHpbkmaj/exec";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const STORE_PREFIX = "em.";
+const SYNC_INTERVAL_MS = 5000;
+let syncInFlight = false;
 
 const auth = {
     token:    () => localStorage.getItem(STORE_PREFIX + "token") || "",
@@ -263,7 +265,7 @@ const auth = {
 
 async function apiGet(action, params = {}) {
     const query = new URLSearchParams({ action, token: auth.token(), ...params });
-    const response = await fetch(`${API_URL}?${query}`);
+    const response = await fetchWithTimeout(`${API_URL}?${query}`);
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
     const result = await response.json();
     handleSessionExpiry(result);
@@ -271,7 +273,7 @@ async function apiGet(action, params = {}) {
 }
 
 async function apiPost(action, payload = {}) {
-    const response = await fetch(API_URL, {
+    const response = await fetchWithTimeout(API_URL, {
         method: "POST",
         body: JSON.stringify({ action, token: auth.token(), ...payload })
     });
@@ -280,6 +282,32 @@ async function apiPost(action, payload = {}) {
     handleSessionExpiry(result);
     if (result.status && result.status !== "success") throw new Error(result.message || "Request rejected");
     return result;
+}
+
+async function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } catch (error) {
+        if (error.name === "AbortError") throw new Error("Server response me zyada samay lag raha hai. Internet connection check karein.");
+        throw new Error("Network error. Internet connection check karke dobara try karein.");
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+function showToast(message, type = "success") {
+    let toast = document.getElementById("appToast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "appToast";
+        document.body.appendChild(toast);
+    }
+    toast.className = `fixed bottom-5 right-5 z-[60] max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lift ${type === "error" ? "bg-rose-600" : "bg-emerald-600"}`;
+    toast.textContent = message;
+    clearTimeout(toast.dismissTimer);
+    toast.dismissTimer = setTimeout(() => toast.remove(), 3500);
 }
 
 function handleSessionExpiry(result) {
@@ -371,7 +399,7 @@ async function loginUser() {
         updateUI();
     } catch (error) {
         console.error("Login error:", error);
-        alert(error.message || "Login nahi ho saka. Internet connection check karein.");
+        showToast(error.message || "Login nahi ho saka. Internet connection check karein.", "error");
     } finally {
         button.disabled = false;
     }
@@ -383,7 +411,7 @@ async function loginAsAdmin() {
     const result = await apiPost("adminLogin", { pin });
     auth.save({ token: result.token, role: "Admin" });
     $("adminPin").value = "";
-    alert("Admin Login Successful!");
+    showToast("Admin login successful.");
 }
 
 async function loginAsVolunteer() {
@@ -393,13 +421,13 @@ async function loginAsVolunteer() {
     const result = await apiPost("volunteerLogin", { phone, password });
     auth.save({ token: result.token, role: "Volunteer", name: result.name, branch: result.branch, semester: result.semester, phone: result.phone || phone, qrUrl: result.qrUrl });
     $("volLoginPassword").value = "";
-    alert("Volunteer Login Successful!");
+    showToast("Volunteer login successful.");
 }
 
 function loginAsParticipant() {
     const phone = $("partLoginPhone").value.trim();
     auth.save({ role: "Participant", phone });
-    alert("Participant Logged In!");
+    showToast("Participant logged in.");
 }
 
 async function logoutUser() {
@@ -408,7 +436,7 @@ async function logoutUser() {
     if (token) {
         try { await apiPost("logout", { token }); } catch (error) { console.error("Logout error:", error); }
     }
-    alert("Logged out successfully.");
+    showToast("Logged out successfully.");
     updateUI();
 }
 
@@ -440,13 +468,23 @@ function updateUI() {
         loadApprovedVolunteers();
         loadPendingVolunteers();
         loadCollectionDashboard();
-        dashboardTimer = setInterval(loadCollectionDashboard, 30000);
+        dashboardTimer = setInterval(() => {
+            if (!document.hidden && !syncInFlight) {
+                syncInFlight = true;
+                loadCollectionDashboard(true).finally(() => { syncInFlight = false; });
+            }
+        }, SYNC_INTERVAL_MS);
     } else if (role === "Volunteer") {
         badge.classList.add("bg-amber-50", "text-amber-800", "ring-amber-200");
         badge.innerText = `● Mode: Volunteer (${auth.branch()})`;
         $("logoutMsg").innerText = `Aap ${auth.branch()} - ${auth.semester()} volunteer ke roop me logged in hain.`;
         loadCollectionDashboard();
-        dashboardTimer = setInterval(loadCollectionDashboard, 30000);
+        dashboardTimer = setInterval(() => {
+            if (!document.hidden && !syncInFlight) {
+                syncInFlight = true;
+                loadCollectionDashboard(true).finally(() => { syncInFlight = false; });
+            }
+        }, SYNC_INTERVAL_MS);
     } else if (role === "Participant") {
         badge.classList.add("bg-brand-50", "text-brand-700", "ring-brand-200");
         badge.innerText = "● Mode: Participant Status View";
@@ -467,11 +505,11 @@ async function submitVolunteerRegistration() {
         password: $("regPassword").value
     };
     if (!payload.name || !payload.phone || !payload.password) {
-        alert("Sabhi fields bharein!");
+        showToast("Sabhi fields bharein.", "error");
         return;
     }
     if (payload.password.length < 6) {
-        alert("Password kam se kam 6 characters ka hona chahiye.");
+        showToast("Password kam se kam 6 characters ka hona chahiye.", "error");
         return;
     }
 
@@ -489,17 +527,17 @@ async function submitVolunteerRegistration() {
         });
         $("regPassword").value = "";
         $("regQrFile").value = "";
-        alert("Volunteer application submitted successfully! Admin approval ke baad login kar sakenge.");
+        showToast("Volunteer application submitted. Admin approval ke baad login kar sakenge.");
         switchTab("login");
     } catch (error) {
         console.error("Volunteer registration error:", error);
-        alert(error.message || "Volunteer registration nahi ho saki.");
+        showToast(error.message || "Volunteer registration nahi ho saki.", "error");
     } finally {
         button.disabled = false;
     }
 }
 
-async function loadCollectionDashboard() {
+async function loadCollectionDashboard(isBackgroundRefresh = false) {
     try {
         const data = await apiGet("getVolunteerDashboard");
         if (auth.role() === "Volunteer") renderVolunteerDashboard(data);
@@ -656,22 +694,22 @@ async function settleVolunteerCollection(phone) {
 
     try {
         await apiPost("settleVolunteerCollection", { phone });
-        alert("Volunteer collection settle ho gayi.");
+        showToast("Volunteer collection settle ho gayi.");
         loadCollectionDashboard();
     } catch (error) {
         console.error("Volunteer settle error:", error);
-        alert(error.message || "Collection settle nahi ho saka.");
+        showToast(error.message || "Collection settle nahi ho saka.", "error");
     }
 }
 
 async function approveVolunteer(phone) {
     try {
         await apiPost("approveVolunteer", { phone });
-        alert("Volunteer Approved!");
+        showToast("Volunteer approved.");
         refreshVolunteerLists();
     } catch (error) {
         console.error("Volunteer approval error:", error);
-        alert(error.message || "Volunteer approve nahi ho saka.");
+        showToast(error.message || "Volunteer approve nahi ho saka.", "error");
     }
 }
 
@@ -685,11 +723,11 @@ async function editVolunteer(phone, current) {
 
     try {
         await apiPost("updateVolunteer", { phone, name, branch, semester });
-        alert("Volunteer profile update ho gayi.");
+        showToast("Volunteer profile update ho gayi.");
         refreshVolunteerLists();
     } catch (error) {
         console.error("Volunteer update error:", error);
-        alert(error.message || "Volunteer profile update nahi ho saki.");
+        showToast(error.message || "Volunteer profile update nahi ho saki.", "error");
     }
 }
 
@@ -697,11 +735,11 @@ async function deleteVolunteer(phone) {
     if (!confirm("Kya aap is volunteer ko delete karna chahte hain?")) return;
     try {
         await apiPost("deleteVolunteer", { phone });
-        alert("Volunteer delete ho gaya.");
+        showToast("Volunteer delete ho gaya.");
         refreshVolunteerLists();
     } catch (error) {
         console.error("Volunteer delete error:", error);
-        alert(error.message || "Volunteer delete nahi ho saka.");
+        showToast(error.message || "Volunteer delete nahi ho saka.", "error");
     }
 }
 
@@ -713,7 +751,7 @@ function refreshVolunteerLists() {
 async function checkParticipantStatus() {
     const phone = $("checkPhone").value.trim();
     const result = $("statusResult");
-    if (!phone) { alert("Phone number daalein!"); return; }
+    if (!phone) { showToast("Phone number daalein.", "error"); return; }
 
     try {
         const data = await apiGet("checkStatus", { phone });
@@ -725,7 +763,7 @@ async function checkParticipantStatus() {
             : "Status: Aapka form abhi tak nahi bhara gaya hai.";
     } catch (error) {
         console.error("Status check error:", error);
-        alert("Error checking status.");
+        showToast(error.message || "Status check nahi ho saka.", "error");
     }
 }
 
@@ -733,17 +771,17 @@ async function saveMeetingDetails() {
     const meetingDate = $("meetingDate").value;
     const decision = $("meetingDecision").value.trim();
     const nextDate = $("nextMeetingDate").value;
-    if (!meetingDate || !decision || !nextDate) { alert("Sabhi fields bharein!"); return; }
+    if (!meetingDate || !decision || !nextDate) { showToast("Sabhi fields bharein.", "error"); return; }
 
     const button = $("saveMeetingBtn");
     button.disabled = true;
     try {
         await apiPost("addMeeting", { meetingDate, decision, nextDate });
         $("meetingDecision").value = "";
-        alert("Meeting Details Saved Successfully!");
+        showToast("Meeting details saved successfully.");
     } catch (error) {
         console.error("Meeting save error:", error);
-        alert(error.message || "Meeting details save nahi ho saki.");
+        showToast(error.message || "Meeting details save nahi ho saki.", "error");
     } finally {
         button.disabled = false;
     }
@@ -752,7 +790,7 @@ async function saveMeetingDetails() {
 async function uploadAdminMedia() {
     const title = $("mediaTitle").value.trim();
     const file = $("mediaFile").files[0];
-    if (!title || !file) { alert("Title aur file select karein!"); return; }
+    if (!title || !file) { showToast("Title aur file select karein.", "error"); return; }
     const button = $("uploadMediaBtn");
     button.disabled = true;
     button.innerText = "Uploading...";
@@ -767,10 +805,10 @@ async function uploadAdminMedia() {
         });
         $("mediaTitle").value = "";
         $("mediaFile").value = "";
-        alert("Media uploaded successfully and available in Gallery!");
+        showToast("Media uploaded successfully and available in Gallery!");
     } catch (error) {
         console.error("Media upload error:", error);
-        alert(error.message || "Media upload nahi ho saka.");
+        showToast(error.message || "Media upload nahi ho saka.", "error");
     } finally {
         button.disabled = false;
         button.innerText = "Upload Media";

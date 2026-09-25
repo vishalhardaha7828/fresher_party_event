@@ -189,11 +189,14 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbzATMliiR8r8JGQqnW-ZL330s6R0KjHS8UXUqrqb8M5yavmkjIKxoM_VBk-afm2m6y7/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx-00e2KP7ePyww0yoW5bXWA_6rOq3JNzJ-rzAlRk-S9h0Bf6XMcrcMDfj9nHpbkmaj/exec";
 const DEFAULT_QR_URL = "https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&sz=w1000";
 
 const STORE_PREFIX = "em.";
 const CACHE_KEY = STORE_PREFIX + "data";
+const SYNC_INTERVAL_MS = 5000;
+let syncTimer = null;
+let syncInFlight = false;
 
 const auth = {
     token:       () => localStorage.getItem(STORE_PREFIX + "token") || "",
@@ -222,7 +225,7 @@ const qrUrl = () => {
 
 async function apiGet(action, params = {}) {
     const query = new URLSearchParams({ action, token: auth.token(), ...params });
-    const response = await fetch(`${API_URL}?${query}`);
+    const response = await fetchWithTimeout(`${API_URL}?${query}`);
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
     const result = await response.json();
     handleSessionExpiry(result);
@@ -230,7 +233,7 @@ async function apiGet(action, params = {}) {
 }
 
 async function apiPost(action, payload = {}) {
-    const response = await fetch(API_URL, {
+    const response = await fetchWithTimeout(API_URL, {
         method: "POST",
         body: JSON.stringify({ action, token: auth.token(), ...payload })
     });
@@ -239,6 +242,45 @@ async function apiPost(action, payload = {}) {
     handleSessionExpiry(result);
     if (result.status && result.status !== "success") throw new Error(result.message || "Request rejected");
     return result;
+}
+
+async function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } catch (error) {
+        if (error.name === "AbortError") throw new Error("Server response me zyada samay lag raha hai. Internet connection check karein.");
+        throw new Error("Network error. Internet connection check karke dobara try karein.");
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+function showToast(message, type = "success") {
+    let toast = document.getElementById("appToast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "appToast";
+        toast.className = "fixed bottom-5 right-5 z-[60] max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lift transition-opacity";
+        document.body.appendChild(toast);
+    }
+    toast.className = `fixed bottom-5 right-5 z-[60] max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lift transition-opacity ${type === "error" ? "bg-rose-600" : "bg-emerald-600"}`;
+    toast.textContent = message;
+    toast.classList.remove("opacity-0");
+    clearTimeout(toast.dismissTimer);
+    toast.dismissTimer = setTimeout(() => toast.classList.add("opacity-0"), 3500);
+}
+
+function startLiveSync() {
+    clearInterval(syncTimer);
+    syncTimer = setInterval(() => {
+        if (document.hidden || syncInFlight) return;
+        loadData(true);
+    }, SYNC_INTERVAL_MS);
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) loadData(true);
+    });
 }
 
 function handleSessionExpiry(result) {
@@ -302,13 +344,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateQr();
     loadData();
+    startLiveSync();
 });
 
 function configureVolunteer() {
     const branch = auth.branch();
     const semester = auth.semester();
     if (!branch || !semester) {
-        alert("Volunteer session incomplete hai.");
+        showToast("Volunteer session incomplete hai.", "error");
         location.href = "access.html";
         return;
     }
@@ -326,7 +369,9 @@ function updateQr() {
     $("qrBox").classList.toggle("hidden", $("mode").value !== "UPI");
 }
 
-async function loadData() {
+async function loadData(isBackgroundRefresh = false) {
+    if (isBackgroundRefresh && syncInFlight) return;
+    syncInFlight = true;
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
         try {
@@ -343,7 +388,9 @@ async function loadData() {
         render();
     } catch (error) {
         console.error("Collection load error:", error);
-        if (!cached) alert("Data load nahi ho saka.");
+        if (!cached) showToast(error.message || "Data load nahi ho saka.", "error");
+    } finally {
+        syncInFlight = false;
     }
 }
 
@@ -429,12 +476,13 @@ function recordRow(row, index, isAdmin) {
 async function saveCollection(event) {
     event.preventDefault();
     if (editingIndex !== null && !auth.isAdmin()) {
-        alert("Sirf Admin entry update kar sakta hai.");
+        showToast("Sirf Admin entry update kar sakta hai.", "error");
         return;
     }
 
     const button = $("saveButton");
     button.disabled = true;
+    button.innerHTML = '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span> Saving...';
     try {
         const payload = {
             name: $("name").value,
@@ -448,15 +496,16 @@ async function saveCollection(event) {
             collectedByName: auth.isVolunteer() ? auth.name() : ""
         };
         await apiPost(editingIndex === null ? "addCollection" : "updateCollection", payload);
-        alert(editingIndex === null ? "Saved Successfully!" : "Updated Successfully!");
+        showToast(editingIndex === null ? "Collection saved successfully." : "Collection updated successfully.");
         resetCollectionEdit();
         localStorage.removeItem(CACHE_KEY);
         loadData();
     } catch (error) {
         console.error("Collection save error:", error);
-        alert(error.message || "Data save nahi ho saka.");
+        showToast(error.message || "Data save nahi ho saka.", "error");
     } finally {
         button.disabled = false;
+        button.innerText = editingIndex === null ? "Save Collection" : "Update Collection";
     }
 }
 
@@ -494,12 +543,12 @@ async function removeEntry(index) {
     if (!confirm("Kya aap ye entry delete karna chahte hain?")) return;
     try {
         await apiPost("deleteCollection", { rowIndex: index });
-        alert("Deleted Successfully!");
+        showToast("Collection entry deleted.");
         localStorage.removeItem(CACHE_KEY);
         loadData();
     } catch (error) {
         console.error("Collection delete error:", error);
-        alert(error.message || "Entry delete nahi ho saki.");
+        showToast(error.message || "Entry delete nahi ho saki.", "error");
     }
 }
 </script>

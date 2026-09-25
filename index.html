@@ -434,7 +434,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbzATMliiR8r8JGQqnW-ZL330s6R0KjHS8UXUqrqb8M5yavmkjIKxoM_VBk-afm2m6y7/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx-00e2KP7ePyww0yoW5bXWA_6rOq3JNzJ-rzAlRk-S9h0Bf6XMcrcMDfj9nHpbkmaj/exec";
 
 /* Hero carousel ki photos — nayi photo add karni ho to bas yahan ek line add karein. */
 const HERO_SLIDES = [
@@ -450,6 +450,9 @@ const HERO_INTERVAL_MS = 5000;
    ========================================================================= */
 const STORE_PREFIX = "em.";
 const CACHE_KEY = STORE_PREFIX + "data";
+const SYNC_INTERVAL_MS = 5000;
+let syncTimer = null;
+let syncInFlight = false;
 
 const auth = {
     token:   () => localStorage.getItem(STORE_PREFIX + "token") || "",
@@ -464,7 +467,7 @@ const auth = {
    ========================================================================= */
 async function apiGet(action, params = {}) {
     const query = new URLSearchParams({ action, token: auth.token(), ...params });
-    const response = await fetch(`${API_URL}?${query}`);
+    const response = await fetchWithTimeout(`${API_URL}?${query}`);
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
     const result = await response.json();
     handleSessionExpiry(result);
@@ -472,7 +475,7 @@ async function apiGet(action, params = {}) {
 }
 
 async function apiPost(action, payload = {}) {
-    const response = await fetch(API_URL, {
+    const response = await fetchWithTimeout(API_URL, {
         method: "POST",
         body: JSON.stringify({ action, token: auth.token(), ...payload })
     });
@@ -481,6 +484,48 @@ async function apiPost(action, payload = {}) {
     handleSessionExpiry(result);
     if (result.status && result.status !== "success") throw new Error(result.message || "Request rejected");
     return result;
+}
+
+async function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } catch (error) {
+        if (error.name === "AbortError") throw new Error("Server response me zyada samay lag raha hai. Internet connection check karein.");
+        throw new Error("Network error. Internet connection check karke dobara try karein.");
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+function showToast(message, type = "success") {
+    let toast = document.getElementById("appToast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "appToast";
+        document.body.appendChild(toast);
+    }
+    toast.className = `fixed bottom-5 right-5 z-[60] max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lift ${type === "error" ? "bg-rose-600" : "bg-emerald-600"}`;
+    toast.textContent = message;
+    clearTimeout(toast.dismissTimer);
+    toast.dismissTimer = setTimeout(() => toast.remove(), 3500);
+}
+
+function startLiveSync() {
+    clearInterval(syncTimer);
+    syncTimer = setInterval(() => {
+        if (document.hidden || syncInFlight) return;
+        syncInFlight = true;
+        Promise.all([loadMeetings(true), loadApprovedVolunteers(true)])
+            .finally(() => { syncInFlight = false; });
+    }, SYNC_INTERVAL_MS);
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+            loadMeetings(true);
+            if ($("section-contact") && !$("section-contact").classList.contains("hidden")) loadApprovedVolunteers(true);
+        }
+    });
 }
 
 function handleSessionExpiry(result) {
@@ -538,6 +583,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     hero.init();
     loadMeetings();
+    startLiveSync();
 });
 
 function showSection(sectionId, clickedLink) {
@@ -663,7 +709,7 @@ const hero = {
 /* =========================================================================
    MEETINGS
    ========================================================================= */
-async function loadMeetings() {
+async function loadMeetings(isBackgroundRefresh = false) {
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
         try { renderMeetings(JSON.parse(cached)); } catch { localStorage.removeItem(CACHE_KEY); }
@@ -674,6 +720,7 @@ async function loadMeetings() {
         renderMeetings(data);
     } catch (error) {
         console.error("Meetings load error:", error);
+        if (!isBackgroundRefresh) showToast(error.message || "Meetings load nahi ho sakin.", "error");
     }
 }
 
@@ -705,9 +752,9 @@ function renderMeetings(data) {
 /* =========================================================================
    APPROVED VOLUNTEERS (public directory)
    ========================================================================= */
-async function loadApprovedVolunteers() {
+async function loadApprovedVolunteers(isBackgroundRefresh = false) {
     const container = $("approvedVolunteersContainer");
-    container.innerHTML = `<p class="muted py-5 text-center">Volunteers load ho rahe hain...</p>`;
+    if (!isBackgroundRefresh) container.innerHTML = `<p class="muted py-5 text-center">Volunteers load ho rahe hain...</p>`;
 
     try {
         const data = await apiGet("getApprovedVolunteers");
@@ -722,6 +769,7 @@ async function loadApprovedVolunteers() {
     } catch (error) {
         console.error("Approved volunteers error:", error);
         container.innerHTML = `<p class="text-[13px] font-semibold text-rose-600">Volunteers load karne me samasya aayi.</p>`;
+        if (!isBackgroundRefresh) showToast(error.message || "Volunteers load nahi ho sake.", "error");
     }
 }
 
@@ -769,11 +817,11 @@ async function submitFeedback(event) {
     try {
         await apiPost("submitFeedback", { name, message });
         $("feedbackForm").reset();
-        alert("Feedback successfully submit ho gaya hai!");
+        showToast("Feedback successfully submit ho gaya hai.");
         if (auth.isAdmin()) loadFeedbackList();
     } catch (error) {
         console.error("Feedback error:", error);
-        alert("Feedback submit karne me samasya aayi.");
+        showToast(error.message || "Feedback submit nahi ho saka.", "error");
     } finally {
         button.disabled = false;
         button.innerText = "Submit Feedback";
@@ -834,7 +882,7 @@ document.addEventListener("click", event => {
 function deleteSelectedFeedbacks() {
     const selected = [...document.querySelectorAll(".feedback-checkbox:checked")];
     if (!selected.length) {
-        alert("Kripya delete karne ke liye kam se kam ek feedback select karein.");
+        showToast("Delete karne ke liye kam se kam ek feedback select karein.", "error");
         return;
     }
     if (!confirm(`Kya aap ${selected.length} selected feedbacks ko delete karna chahte hain?`)) return;
@@ -844,11 +892,11 @@ function deleteSelectedFeedbacks() {
 async function deleteFeedbacks(rows) {
     try {
         await apiPost("deleteFeedback", { rows });
-        alert("Feedback delete kar diya gaya hai!");
+        showToast("Feedback delete kar diya gaya hai.");
         loadFeedbackList();
     } catch (error) {
         console.error("Feedback delete error:", error);
-        alert(error.message || "Delete karne me error aayi.");
+        showToast(error.message || "Delete karne me error aayi.", "error");
     }
 }
 

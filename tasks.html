@@ -169,13 +169,16 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbzATMliiR8r8JGQqnW-ZL330s6R0KjHS8UXUqrqb8M5yavmkjIKxoM_VBk-afm2m6y7/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx-00e2KP7ePyww0yoW5bXWA_6rOq3JNzJ-rzAlRk-S9h0Bf6XMcrcMDfj9nHpbkmaj/exec";
 
 /* =========================================================================
    SESSION — sirf UI ke liye; asli permission Apps Script me check hoti hai.
    ========================================================================= */
 const STORE_PREFIX = "em.";
 const CACHE_KEY = STORE_PREFIX + "data";
+const SYNC_INTERVAL_MS = 5000;
+let syncTimer = null;
+let syncInFlight = false;
 
 const auth = {
     token:   () => localStorage.getItem(STORE_PREFIX + "token") || "",
@@ -188,7 +191,7 @@ const auth = {
    ========================================================================= */
 async function apiGet(action, params = {}) {
     const query = new URLSearchParams({ action, token: auth.token(), ...params });
-    const response = await fetch(`${API_URL}?${query}`);
+    const response = await fetchWithTimeout(`${API_URL}?${query}`);
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
     const result = await response.json();
     handleSessionExpiry(result);
@@ -196,7 +199,7 @@ async function apiGet(action, params = {}) {
 }
 
 async function apiPost(action, payload = {}) {
-    const response = await fetch(API_URL, {
+    const response = await fetchWithTimeout(API_URL, {
         method: "POST",
         body: JSON.stringify({ action, token: auth.token(), ...payload })
     });
@@ -205,6 +208,42 @@ async function apiPost(action, payload = {}) {
     handleSessionExpiry(result);
     if (result.status && result.status !== "success") throw new Error(result.message || "Request rejected");
     return result;
+}
+
+async function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } catch (error) {
+        if (error.name === "AbortError") throw new Error("Server response me zyada samay lag raha hai. Internet connection check karein.");
+        throw new Error("Network error. Internet connection check karke dobara try karein.");
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+function showToast(message, type = "success") {
+    let toast = document.getElementById("appToast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "appToast";
+        document.body.appendChild(toast);
+    }
+    toast.className = `fixed bottom-5 right-5 z-[60] max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lift ${type === "error" ? "bg-rose-600" : "bg-emerald-600"}`;
+    toast.textContent = message;
+    clearTimeout(toast.dismissTimer);
+    toast.dismissTimer = setTimeout(() => toast.remove(), 3500);
+}
+
+function startLiveSync() {
+    clearInterval(syncTimer);
+    syncTimer = setInterval(() => {
+        if (!document.hidden && !syncInFlight) loadData(true);
+    }, SYNC_INTERVAL_MS);
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) loadData(true);
+    });
 }
 
 function handleSessionExpiry(result) {
@@ -259,18 +298,24 @@ document.addEventListener("DOMContentLoaded", () => {
         try { applyData(JSON.parse(cached)); } catch { localStorage.removeItem(CACHE_KEY); }
     }
     loadData();
+    startLiveSync();
 });
 
 /* =========================================================================
    DATA
    ========================================================================= */
-async function loadData() {
+async function loadData(isBackgroundRefresh = false) {
+    if (isBackgroundRefresh && syncInFlight) return;
+    syncInFlight = true;
     try {
         const data = await apiGet("getData");
         localStorage.setItem(CACHE_KEY, JSON.stringify(cacheableCopy(data)));
         applyData(data);
     } catch (error) {
         console.error("Tasks load error:", error);
+        if (!isBackgroundRefresh) showToast(error.message || "Tasks load nahi ho sake.", "error");
+    } finally {
+        syncInFlight = false;
     }
 }
 
@@ -334,12 +379,12 @@ async function markCompleted(title) {
     if (!confirm(`Kya aap "${title}" ko completed mark karna chahte hain?`)) return;
     try {
         await apiPost("updateTaskStatus", { title });
-        alert("Task status updated successfully!");
+        showToast("Task status updated successfully.");
         localStorage.removeItem(CACHE_KEY);
         loadData();
     } catch (error) {
         console.error("Task status error:", error);
-        alert(error.message || "Error updating status!");
+        showToast(error.message || "Task status update nahi ho saka.", "error");
     }
 }
 
@@ -347,7 +392,7 @@ async function submitTask(event) {
     event.preventDefault();
     const button = $("saveTaskBtn");
     button.disabled = true;
-    button.innerText = "Saving...";
+    button.innerHTML = '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span> Saving...';
     try {
         await apiPost("addTask", {
             title: $("tTitle").value,
@@ -356,13 +401,13 @@ async function submitTask(event) {
             time: $("tTime").value,
             responsible: $("tResponsible").value
         });
-        alert("Saved Successfully!");
+        showToast("Task saved successfully.");
         $("taskForm").reset();
         localStorage.removeItem(CACHE_KEY);
         loadData();
     } catch (error) {
         console.error("Task save error:", error);
-        alert(error.message || "Error saving!");
+        showToast(error.message || "Task save nahi ho saka.", "error");
     } finally {
         button.disabled = false;
         button.innerText = "Save Task";

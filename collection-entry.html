@@ -109,14 +109,14 @@
                         <label class="field-label" for="name">Name / Faculty Name</label>
                         <input id="name" class="input" maxlength="120" required>
                     </div>
-                    <div>
+                    <div id="branchField">
                         <label class="field-label" for="branch">Branch</label>
                         <select id="branch" class="input" required>
                             <option value="">Select Branch</option>
                             <option>ME</option><option>CS</option><option>AE</option><option>Civil</option>
                         </select>
                     </div>
-                    <div>
+                    <div id="semesterField">
                         <label class="field-label" for="semester">Semester</label>
                         <select id="semester" class="input" required>
                             <option value="">Select Semester</option>
@@ -189,7 +189,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbx-00e2KP7ePyww0yoW5bXWA_6rOq3JNzJ-rzAlRk-S9h0Bf6XMcrcMDfj9nHpbkmaj/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwbBxRSDrvUZFhPqK_Gm6yc0JC2KDA2Qk7QPHU56V6IaDor4AW9FCseSC7cVohHkZKW/exec";
 const DEFAULT_QR_URL = "https://drive.google.com/thumbnail?id=1FMeJrvsciwLZDAWbJ1tuzDoGbZfCGLSc&sz=w1000";
 
 const STORE_PREFIX = "em.";
@@ -327,6 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     $("mode").addEventListener("change", updateQr);
+    $("category").addEventListener("change", updateFacultyFields);
     $("collectionForm").addEventListener("submit", saveCollection);
     $("cancelEdit").addEventListener("click", resetCollectionEdit);
     ["search", "semesterFilter", "branchFilter", "categoryFilter"].forEach(id => $(id).addEventListener("input", render));
@@ -343,6 +344,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     updateQr();
+    updateFacultyFields();
     loadData();
     startLiveSync();
 });
@@ -367,6 +369,18 @@ function configureVolunteer() {
 
 function updateQr() {
     $("qrBox").classList.toggle("hidden", $("mode").value !== "UPI");
+}
+
+function updateFacultyFields() {
+    const isFaculty = $("category").value === "Faculty";
+    $("branchField").classList.toggle("hidden", isFaculty);
+    $("semesterField").classList.toggle("hidden", isFaculty);
+    $("branch").required = !isFaculty;
+    $("semester").required = !isFaculty;
+    if (isFaculty) {
+        $("branch").value = "";
+        $("semester").value = "";
+    }
 }
 
 async function loadData(isBackgroundRefresh = false) {
@@ -519,6 +533,7 @@ function startEdit(index) {
     $("branch").value = row[1] || "";
     $("semester").value = row[2] || "";
     $("category").value = row[3] || "Regular";
+    updateFacultyFields();
     $("amount").value = row[4] || "";
     $("mode").value = row[5] || "Cash";
     $("formTitle").innerText = "Edit Collection Entry";
@@ -535,6 +550,7 @@ function resetCollectionEdit() {
     $("saveButton").innerText = "Save Collection";
     $("cancelEdit").classList.add("hidden");
     $("qrBox").classList.add("hidden");
+    updateFacultyFields();
     if (auth.isVolunteer()) configureVolunteer();
 }
 

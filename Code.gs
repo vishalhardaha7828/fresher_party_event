@@ -473,7 +473,12 @@ function getData() {
 
 function getVolunteerDashboard(session) {
   const current = volunteerSheet();
-  if (!current) return ok({ volunteer: null, stats: { total: 0, entries: 0 }, volunteers: [] });
+  if (!current) return ok({
+    volunteer: null,
+    stats: { total: 0, entries: 0 },
+    volunteers: [],
+    facultyCollection: session && session.role === "Admin" ? getFacultyCollectionSummary() : null
+  });
   const headers = headersOf(current);
   const totals = volunteerMetricsByPhone();
   const settlements = settlementSummaryByPhone();
@@ -498,8 +503,27 @@ function getVolunteerDashboard(session) {
     volunteer: phone ? volunteers.find(item => item.phone === phone) || null : null,
     stats: phone ? (totals[phone] || { total: 0, entries: 0 }) : { total: 0, entries: 0 },
     volunteers: session && session.role === "Admin" ? volunteers : [],
+    facultyCollection: session && session.role === "Admin" ? getFacultyCollectionSummary() : null,
     settlement: phone ? (settlements[phone] || null) : null
   });
+}
+
+function getFacultyCollectionSummary() {
+  const current = sheet("Collection");
+  if (!current || current.getLastRow() < 2) return { total: 0, entries: [] };
+  const values = current.getDataRange().getValues();
+  const headers = values[0];
+  const entries = values.slice(1).filter(row => String(valueAt(row, headers, ["Category"])).trim().toLowerCase() === "faculty")
+    .map(row => ({
+      name: valueAt(row, headers, ["Name", "Student Name", "Participant Name"]),
+      amount: Number(valueAt(row, headers, ["Amount", "Collected Amount"])) || 0,
+      mode: valueAt(row, headers, ["Mode", "Payment Mode"]),
+      date: valueAt(row, headers, ["Timestamp", "Date", "Date / Time", "Created At"])
+    }));
+  return {
+    total: entries.reduce((total, entry) => total + entry.amount, 0),
+    entries: entries.reverse()
+  };
 }
 
 function settlementSummaryByPhone() {
@@ -797,9 +821,9 @@ function deleteFeedback(data) {
 
 function saveCollection(data, session, updating) {
   const isVolunteer = session && session.role === "Volunteer";
-  const branch = isVolunteer ? text(session.branch, 40) : text(data.branch, 40);
-  const semester = isVolunteer ? text(session.semester, 20) : text(data.semester, 20);
   const category = text(data.category, 40) || "Regular";
+  const branch = category === "Faculty" ? "" : (isVolunteer ? text(session.branch, 40) : text(data.branch, 40));
+  const semester = category === "Faculty" ? "" : (isVolunteer ? text(session.semester, 20) : text(data.semester, 20));
   const name = text(data.name, 120);
   const amount = amountOf(data.amount);
 

@@ -178,6 +178,15 @@
             </div>
         </div>
 
+        <nav id="adminToolsNav" class="hidden mb-5 flex gap-1 overflow-x-auto border-b border-brand-200" role="tablist" aria-label="Admin tools">
+            <button type="button" class="whitespace-nowrap border-b-2 border-brand-600 px-3 py-3 text-xs font-bold text-brand-700" data-admin-view="volunteers" role="tab" aria-selected="true" aria-controls="volunteerDirectorySection">Approved Volunteers</button>
+            <button type="button" class="whitespace-nowrap border-b-2 border-transparent px-3 py-3 text-xs font-bold text-ink-500 hover:text-brand-700" data-admin-view="volunteerCollections" role="tab" aria-selected="false" aria-controls="adminCollectionSection">Volunteer Collection</button>
+            <button type="button" class="whitespace-nowrap border-b-2 border-transparent px-3 py-3 text-xs font-bold text-ink-500 hover:text-brand-700" data-admin-view="facultyCollections" role="tab" aria-selected="false" aria-controls="adminFacultyCollectionSection">Faculty Collection</button>
+            <button type="button" class="whitespace-nowrap border-b-2 border-transparent px-3 py-3 text-xs font-bold text-ink-500 hover:text-brand-700" data-admin-view="approvals" role="tab" aria-selected="false" aria-controls="adminApprovalSection">Approvals</button>
+            <button type="button" class="whitespace-nowrap border-b-2 border-transparent px-3 py-3 text-xs font-bold text-ink-500 hover:text-brand-700" data-admin-view="meetings" role="tab" aria-selected="false" aria-controls="meetingSection">Meetings</button>
+            <button type="button" class="whitespace-nowrap border-b-2 border-transparent px-3 py-3 text-xs font-bold text-ink-500 hover:text-brand-700" data-admin-view="media" role="tab" aria-selected="false" aria-controls="adminMediaBox">Media</button>
+        </nav>
+
         <div class="card hidden" id="volunteerDirectorySection">
             <h2 class="card-title">👥 Approved Volunteers</h2>
             <div id="approvedVolunteersList" class="grid grid-cols-[repeat(auto-fit,minmax(235px,1fr))] gap-3">
@@ -193,6 +202,11 @@
         <div class="card hidden" id="adminCollectionSection">
             <h2 class="card-title">📊 Volunteer Collection Summary</h2>
             <div id="adminCollectionSummary"></div>
+        </div>
+
+        <div class="card hidden" id="adminFacultyCollectionSection">
+            <h2 class="card-title">Faculty Collection</h2>
+            <div id="adminFacultyCollectionSummary"></div>
         </div>
 
         <div class="card hidden" id="adminApprovalSection">
@@ -230,7 +244,7 @@
     </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbx-00e2KP7ePyww0yoW5bXWA_6rOq3JNzJ-rzAlRk-S9h0Bf6XMcrcMDfj9nHpbkmaj/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwbBxRSDrvUZFhPqK_Gm6yc0JC2KDA2Qk7QPHU56V6IaDor4AW9FCseSC7cVohHkZKW/exec";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const STORE_PREFIX = "em.";
 const SYNC_INTERVAL_MS = 5000;
@@ -346,6 +360,15 @@ function participantStatusText(data) {
 
 const $ = id => document.getElementById(id);
 let dashboardTimer = null;
+let activeAdminView = "volunteers";
+const ADMIN_VIEW_PANELS = {
+    volunteers: "volunteerDirectorySection",
+    volunteerCollections: "adminCollectionSection",
+    facultyCollections: "adminFacultyCollectionSection",
+    approvals: "adminApprovalSection",
+    meetings: "meetingSection",
+    media: "adminMediaBox"
+};
 
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("[data-menu-toggle]").addEventListener("click", () => {
@@ -354,6 +377,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.querySelectorAll("[data-tab]").forEach(button => {
         button.addEventListener("click", () => switchTab(button.dataset.tab));
+    });
+    document.querySelectorAll("[data-admin-view]").forEach(button => {
+        button.addEventListener("click", () => selectAdminView(button.dataset.adminView));
     });
 
     $("loginRole").addEventListener("change", handleLoginRoleChange);
@@ -451,12 +477,9 @@ function updateUI() {
     show("registerSection", false);
     show("statusSection", false);
     show("logoutSection", isLoggedIn);
-    show("volunteerDirectorySection", role === "Admin");
-    show("adminApprovalSection", role === "Admin");
+    show("adminToolsNav", role === "Admin");
     show("volunteerDashboardSection", role === "Volunteer");
-    show("adminCollectionSection", role === "Admin");
-    show("meetingSection", role === "Admin");
-    show("adminMediaBox", role === "Admin");
+    updateAdminTabs();
     clearInterval(dashboardTimer);
     dashboardTimer = null;
 
@@ -494,6 +517,27 @@ function updateUI() {
         badge.innerText = "Mode: Normal Student / Viewer";
         handleLoginRoleChange();
     }
+}
+
+function selectAdminView(view) {
+    if (!Object.prototype.hasOwnProperty.call(ADMIN_VIEW_PANELS, view)) return;
+    activeAdminView = view;
+    updateAdminTabs();
+}
+
+function updateAdminTabs() {
+    const isAdmin = auth.role() === "Admin";
+    document.querySelectorAll("[data-admin-view]").forEach(button => {
+        const isActive = button.dataset.adminView === activeAdminView;
+        button.classList.toggle("border-brand-600", isActive);
+        button.classList.toggle("text-brand-700", isActive);
+        button.classList.toggle("border-transparent", !isActive);
+        button.classList.toggle("text-ink-500", !isActive);
+        button.setAttribute("aria-selected", String(isActive));
+    });
+    Object.entries(ADMIN_VIEW_PANELS).forEach(([view, panelId]) => {
+        $(panelId).classList.toggle("hidden", !isAdmin || view !== activeAdminView);
+    });
 }
 
 async function submitVolunteerRegistration() {
@@ -541,12 +585,23 @@ async function loadCollectionDashboard(isBackgroundRefresh = false) {
     try {
         const data = await apiGet("getVolunteerDashboard");
         if (auth.role() === "Volunteer") renderVolunteerDashboard(data);
-        if (auth.role() === "Admin") renderAdminCollectionSummary(data);
+        if (auth.role() === "Admin") {
+            renderAdminCollectionSummary(data);
+            renderAdminFacultyCollectionSummary(data.facultyCollection || {});
+        }
     } catch (error) {
         console.error("Collection dashboard error:", error);
         const target = auth.role() === "Admin" ? $("adminCollectionSummary") : $("volunteerDashboard");
         if (target) target.innerHTML = `<p class="text-[13px] font-semibold text-rose-600">Collection status load nahi ho saka.</p>`;
     }
+}
+
+function renderAdminFacultyCollectionSummary(summary) {
+    const entries = Array.isArray(summary.entries) ? summary.entries : [];
+    $("adminFacultyCollectionSummary").innerHTML = `<p class="mb-3 text-lg font-extrabold text-emerald-700">Total received: ₹ ${Number(summary.total || 0).toLocaleString("en-IN")}</p>`
+        + (entries.length
+            ? `<div class="overflow-x-auto"><table class="w-full text-left text-[13px]"><thead><tr class="bg-brand-50 text-[11px] uppercase text-brand-800"><th class="p-3">Faculty Name</th><th class="p-3">Amount</th><th class="p-3">Payment Mode</th><th class="p-3">Date / Time</th></tr></thead><tbody>${entries.map(entry => `<tr class="border-t border-brand-100"><td class="p-3 font-semibold">${escapeHtml(entry.name || "-")}</td><td class="p-3 font-bold text-emerald-700">₹ ${Number(entry.amount || 0).toLocaleString("en-IN")}</td><td class="p-3">${escapeHtml(entry.mode || "-")}</td><td class="p-3 text-[12px]">${escapeHtml(formatSettlementDate(entry.date))}</td></tr>`).join("")}</tbody></table></div>`
+            : `<p class="muted">Abhi faculty se koi collection nahi aayi.</p>`);
 }
 
 function driveImageUrl(value) {

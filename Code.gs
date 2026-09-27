@@ -1023,7 +1023,7 @@ function completeParticipant(data) {
 }
 
 function updateParticipantOrder(data) {
-  const current = ensureParticipantSheet();
+  const current = sheet("Participants");
   const requestedPhone = phoneOf(data.phone);
   const direction = String(data.direction || "");
   if (!current || !requestedPhone || !["up", "down"].includes(direction)) return fail("Invalid participant order request");
@@ -1128,7 +1128,7 @@ function saveDriveFile(base64, fileName, mimeType, imageOnly, folderId, allowedT
 function checkStatus(phone) {
   const wanted = phoneOf(phone);
   if (!wanted) return json({ found: false });
-  const current = ensureParticipantSheet();
+  const current = sheet("Participants");
   if (!current || current.getLastRow() < 2) return json({ found: false });
   const headers = headersOf(current);
   const rows = current.getDataRange().getValues().slice(1)
@@ -1144,6 +1144,7 @@ function checkStatus(phone) {
     event: valueAt(row, headers, ["Event"]),
     name: valueAt(row, headers, ["Name", "Participant Name"]),
     type: valueAt(row, headers, ["Type"]),
+    songUrl: valueAt(row, headers, ["Song URL", "Dance Song", "Song"]),
     groupMembers: valueAt(row, headers, ["Group Members"]),
     status: String(valueAt(row, headers, ["Program Status", "Status"]) || "Pending"),
     position: position,

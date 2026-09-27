@@ -155,9 +155,9 @@
                     <input type="tel" id="pPhone" class="input" maxlength="10" pattern="[0-9]{10}" required placeholder="10 digit mobile number">
                 </div>
                 <div id="songGroup" class="hidden md:col-span-2">
-                    <label class="field-label" for="pSong">Dance Song (sirf MP3)</label>
-                    <input type="file" id="pSong" class="input" accept="audio/mpeg,.mp3">
-                    <p class="mt-1.5 text-xs text-ink-500">Dance select karne par apna MP3 gana upload karein.</p>
+                    <label class="field-label" for="pSong">Dance Song ya Video (MP3 ya MP4)</label>
+                    <input type="file" id="pSong" class="input" accept="audio/mpeg,audio/mp3,video/mp4,.mp3,.mp4">
+                    <p class="mt-1.5 text-xs text-ink-500">Ek hi picker se MP3 gana ya MP4 video, inmein se ek select karein.</p>
                 </div>
                 <div class="md:col-span-2">
                     <button type="submit" id="savePartBtn" class="btn">Register Participant →</button>
@@ -180,7 +180,7 @@
                             <th>Semester</th>
                             <th>Event</th>
                             <th>Phone</th>
-                            <th>Song</th>
+                            <th>Media</th>
                             <th id="orderHeader" class="hidden">Program Order</th>
                             <th id="statusHeader" class="hidden">Status</th>
                         </tr>
@@ -197,7 +197,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbz7jCGW2MzbhfPvodL-ygCeR66df_Fq7Mh9YUHhIdC8o28JOk4rtsNwL-7-cn1Fo-0m/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwIwXe9i3bF99ZUs-smCPrSjPtmqJakKiedr6cMCuQwSwTYKMat2yFWfuwKsH6dXvR4/exec";
 
 /* =========================================================================
    SESSION — sirf UI ke liye; asli permission Apps Script me check hoti hai.
@@ -428,11 +428,19 @@ function renderTable() {
             ? `<td><span class="badge badge-completed">✓ Completed</span></td>`
             : `<td><button type="button" class="btn btn-sm btn-success" data-complete-phone="${escapeHtml(phone)}">Complete</button></td>`)
         : "";
-    const songUrl = participantValue(row, ["Song URL", "Dance Song", "Song"]);
-    const songId = getDriveFileId(songUrl);
-    const song = auth.isAdmin() && songId
-        ? `<td><a href="${escapeHtml(getDownloadUrl(songId))}" download target="_blank" rel="noopener noreferrer" class="font-semibold text-brand-700 hover:underline">📥 Download MP3</a></td>`
-        : `<td>${songUrl ? "MP3 uploaded" : "-"}</td>`;
+    const mediaUrls = String(participantValue(row, ["Song URL", "Dance Song", "Song"]) || "")
+        .split(/\r?\n/)
+        .map(url => url.trim())
+        .filter(Boolean);
+    const media = mediaUrls.length
+        ? `<td>${mediaUrls.map((url, mediaIndex) => {
+            const mediaId = getDriveFileId(url);
+            const label = mediaUrls.length > 1 ? (mediaIndex === 0 ? "Song" : "Video") : "Media";
+            return mediaId
+                ? `<a href="${escapeHtml(getDownloadUrl(mediaId))}" download target="_blank" rel="noopener noreferrer" class="block font-semibold text-brand-700 hover:underline">📥 Download ${label}</a>`
+                : `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="block font-semibold text-brand-700 hover:underline">Open ${label}</a>`;
+        }).join("")}</td>`
+        : `<td>-</td>`;
 
     return `<tr>
         <td class="font-semibold text-ink-900">${escapeHtml(name || "-")}${members}</td>
@@ -441,7 +449,7 @@ function renderTable() {
         <td>${escapeHtml(semester || "-")}</td>
         <td>${escapeHtml(event || "-")}</td>
         <td class="whitespace-nowrap">${escapeHtml(phone || "-")}</td>
-        ${song}
+        ${media}
         ${order}
         ${status}
     </tr>`;
@@ -496,12 +504,13 @@ async function submitParticipant(event) {
     try {
         const type = $("pType").value;
         const eventName = $("pEvent").value;
-        const song = $("pSong").files[0];
-        if (eventName === "Dance" && !song) throw new Error("Dance participant ke liye MP3 song select karein.");
-        if (song && (!/^audio\/(mpeg|mp3)$/i.test(song.type) || !/\.mp3$/i.test(song.name))) {
-            throw new Error("Sirf MP3 file upload karein.");
-        }
-        const songData = song ? await readFileAsBase64(song) : "";
+        const mediaFiles = Array.from($("pSong").files);
+        if (mediaFiles.length > 1) throw new Error("Sirf ek MP3 gana ya MP4 video select karein.");
+        const media = mediaFiles[0] || null;
+        const isMp3 = media && /^audio\/(mpeg|mp3)$/i.test(media.type) && /\.mp3$/i.test(media.name);
+        const isMp4 = media && /^video\/mp4$/i.test(media.type) && /\.mp4$/i.test(media.name);
+        if (eventName === "Dance" && !media) throw new Error("Dance participant ke liye MP3 gana ya MP4 video mein se ek select karein.");
+        if (media && !isMp3 && !isMp4) throw new Error("Sirf MP3 gana ya MP4 video upload karein.");
         await apiPost("addParticipant", {
             name: $("pName").value,
             branch: $("pBranch").value,
@@ -510,8 +519,12 @@ async function submitParticipant(event) {
             phone,
             type,
             groupMembers: type === "Group" ? $("pGroupMembers").value : "",
-            songData,
-            songName: song ? song.name : ""
+            songData: isMp3 ? await readFileAsBase64(media) : "",
+            songName: isMp3 ? media.name : "",
+            songMimeType: isMp3 ? media.type : "",
+            videoData: isMp4 ? await readFileAsBase64(media) : "",
+            videoName: isMp4 ? media.name : "",
+            videoMimeType: isMp4 ? media.type : ""
         });
         showToast("Participant registered successfully.");
         $("participantForm").reset();

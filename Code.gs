@@ -13,7 +13,7 @@ const FAILED_LOGIN_DELAY_MS = 400;
 const MAX_TEXT_LENGTH = 500;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_UPLOAD_TYPES = /^(image|video)\//i;
-const ALLOWED_SONG_TYPES = /^(audio\/mpeg|audio\/mp3)$/i;
+const ALLOWED_PARTICIPANT_MEDIA_TYPES = /^(audio\/mpeg|audio\/mp3|video\/mp4)$/i;
 
 const ACTION_ROLES = {
   getVolunteerDashboard: ["Admin", "Volunteer"],
@@ -707,6 +707,9 @@ function ensureParticipantSheet() {
     current.insertColumnAfter(current.getLastColumn());
     current.getRange(1, current.getLastColumn()).setValue("Song URL");
   }
+  headers = headersOf(current);
+  const mediaTypeIndex = col(headers, ["Media Type"]);
+  if (mediaTypeIndex >= 0) current.deleteColumn(mediaTypeIndex + 1);
   normalizeParticipantOrder(current);
   return current;
 }
@@ -963,11 +966,20 @@ function addParticipant(data) {
   const nextOrder = (existingOrders.length ? Math.max.apply(null, existingOrders) : 0) + 1;
   const eventName = text(data.event, 60);
   let songUrl = "";
+  let videoUrl = "";
   if (eventName.toLowerCase() === "dance") {
-    if (!data.songData || !data.songName) return fail("Dance participant ke liye MP3 song zaroori hai.");
-    if (!/\.mp3$/i.test(String(data.songName))) return fail("Sirf MP3 song upload karein.");
-    const songName = text(name.replace(/[\\/:*?"<>|]/g, "_") + ".mp3", 200);
-    songUrl = saveDriveFile(data.songData, songName, "audio/mpeg", false, SONG_FOLDER_ID || MEDIA_FOLDER_ID, ALLOWED_SONG_TYPES, null);
+    const hasSong = Boolean(data.songData);
+    const hasVideo = Boolean(data.videoData);
+    if (hasSong === hasVideo) return fail("Dance participant ke liye MP3 gana ya MP4 video mein se ek upload karein.");
+    const isMp3 = hasSong && /\.mp3$/i.test(String(data.songName)) && /^(audio\/mpeg|audio\/mp3)$/i.test(String(data.songMimeType || ""));
+    const isMp4 = hasVideo && /\.mp4$/i.test(String(data.videoName)) && /^video\/mp4$/i.test(String(data.videoMimeType || ""));
+    if (!isMp3 && !isMp4) return fail("Sirf valid MP3 gana ya MP4 video upload karein.");
+    const safeName = name.replace(/[\\/:*?"<>|]/g, "_");
+    if (isMp3) {
+      songUrl = saveDriveFile(data.songData, text(safeName + ".mp3", 200), "audio/mpeg", false, SONG_FOLDER_ID || MEDIA_FOLDER_ID, ALLOWED_PARTICIPANT_MEDIA_TYPES, null);
+    } else {
+      videoUrl = saveDriveFile(data.videoData, text(safeName + ".mp4", 200), "video/mp4", false, SONG_FOLDER_ID || MEDIA_FOLDER_ID, ALLOWED_PARTICIPANT_MEDIA_TYPES, null);
+    }
   }
   const participantValues = Array(current.getLastColumn()).fill("");
   const setParticipantValue = (names, value) => {
@@ -984,14 +996,15 @@ function addParticipant(data) {
   setParticipantValue(["Timestamp", "Created At", "Date"], new Date());
   setParticipantValue(["Program Order", "Order", "Sequence"], nextOrder);
   setParticipantValue(["Program Status", "Status"], "Pending");
-  setParticipantValue(["Song URL", "Dance Song", "Song"], songUrl);
+  const mediaUrl = songUrl || videoUrl;
+  setParticipantValue(["Song URL", "Dance Song", "Song"], mediaUrl);
   current.getRange(current.getLastRow() + 1, 1, 1, participantValues.length).setValues([participantValues]);
   const savedRow = current.getRange(current.getLastRow(), 1, 1, current.getLastColumn()).getValues()[0];
   const savedSongUrl = valueAt(savedRow, headers, ["Song URL", "Dance Song", "Song"]);
-  if (eventName.toLowerCase() === "dance" && songUrl && String(savedSongUrl) !== String(songUrl)) {
+  if (eventName.toLowerCase() === "dance" && String(savedSongUrl) !== mediaUrl) {
     throw new Error("Participant save ho gaya, lekin Song URL column me save nahi hua.");
   }
-  return ok({ songUrl: songUrl });
+  return ok({ songUrl: songUrl, videoUrl: videoUrl });
 }
 
 function completeParticipant(data) {
@@ -1105,7 +1118,7 @@ function saveDriveFile(base64, fileName, mimeType, imageOnly, folderId, allowedT
   const type = text(mimeType, 100) || "application/octet-stream";
   const allowed = allowedTypes || (imageOnly ? /^image\//i : ALLOWED_UPLOAD_TYPES);
   if (!allowed.test(type)) {
-    throw new Error(imageOnly ? "Sirf QR image upload karein." : allowedTypes ? "Sirf MP3 song upload karein." : "Sirf image ya video upload ki ja sakti hai.");
+    throw new Error(imageOnly ? "Sirf QR image upload karein." : allowedTypes ? "Sirf MP3 audio ya MP4 video upload karein." : "Sirf image ya video upload ki ja sakti hai.");
   }
 
   const bytes = Utilities.base64Decode(String(base64 || ""));
@@ -1125,6 +1138,16 @@ function saveDriveFile(base64, fileName, mimeType, imageOnly, folderId, allowedT
   return file.getUrl();
 }
 
+function getDriveFileMimeType(fileUrl) {
+  const match = String(fileUrl || "").match(/(?:\/d\/|[?&]id=)([a-zA-Z0-9_-]+)/);
+  if (!match) return "";
+  try {
+    return DriveApp.getFileById(match[1]).getMimeType();
+  } catch (error) {
+    return "";
+  }
+}
+
 function checkStatus(phone) {
   const wanted = phoneOf(phone);
   if (!wanted) return json({ found: false });
@@ -1139,12 +1162,15 @@ function checkStatus(phone) {
 
   const row = found.row;
   const position = rows.indexOf(found) + 1;
+  const songUrl = valueAt(row, headers, ["Song URL", "Dance Song", "Song"]);
+  const mediaUrls = String(songUrl || "").split(/\r?\n/).map(url => url.trim()).filter(Boolean);
   return json({
     found: true,
     event: valueAt(row, headers, ["Event"]),
     name: valueAt(row, headers, ["Name", "Participant Name"]),
     type: valueAt(row, headers, ["Type"]),
-    songUrl: valueAt(row, headers, ["Song URL", "Dance Song", "Song"]),
+    songUrl: songUrl,
+    mediaType: mediaUrls.length === 1 ? getDriveFileMimeType(mediaUrls[0]) : "",
     groupMembers: valueAt(row, headers, ["Group Members"]),
     status: String(valueAt(row, headers, ["Program Status", "Status"]) || "Pending"),
     position: position,

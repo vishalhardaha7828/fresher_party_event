@@ -1165,25 +1165,31 @@ function checkStatus(phone) {
   const rows = current.getDataRange().getValues().slice(1)
     .map((row, index) => ({ row, sheetRow: index + 2, order: Number(valueAt(row, headers, ["Program Order", "Order", "Sequence"])) || index + 1, status: String(valueAt(row, headers, ["Program Status", "Status"]) || "Pending") }))
     .sort((left, right) => (left.status === "Completed") - (right.status === "Completed") || left.order - right.order);
-  const found = rows.find(item => phoneOf(valueAt(item.row, headers, ["Phone", "Phone Number"])) === wanted);
-  if (!found) return json({ found: false });
+  const participants = rows.map((item, index) => {
+    const row = item.row;
+    const songUrl = valueAt(row, headers, ["Song URL", "Dance Song", "Song"]);
+    const mediaUrls = String(songUrl || "").split(/\r?\n/).map(url => url.trim()).filter(Boolean);
+    const position = index + 1;
+    return {
+      event: valueAt(row, headers, ["Event"]),
+      name: valueAt(row, headers, ["Name", "Participant Name"]),
+      phone: phoneOf(valueAt(row, headers, ["Phone", "Phone Number"])),
+      type: valueAt(row, headers, ["Type"]),
+      songUrl: songUrl,
+      mediaType: mediaUrls.length === 1 ? getDriveFileMimeType(mediaUrls[0]) : "",
+      groupMembers: valueAt(row, headers, ["Group Members"]),
+      status: item.status,
+      position: position,
+      totalParticipants: rows.length,
+      isNext: position === 1,
+      nextProgram: rows[0] ? valueAt(rows[0].row, headers, ["Event"]) : ""
+    };
+  }).filter(item => item.phone === wanted);
+  if (!participants.length) return json({ found: false, participants: [], totalPrograms: 0 });
 
-  const row = found.row;
-  const position = rows.indexOf(found) + 1;
-  const songUrl = valueAt(row, headers, ["Song URL", "Dance Song", "Song"]);
-  const mediaUrls = String(songUrl || "").split(/\r?\n/).map(url => url.trim()).filter(Boolean);
-  return json({
+  return json(Object.assign({}, participants[0], {
     found: true,
-    event: valueAt(row, headers, ["Event"]),
-    name: valueAt(row, headers, ["Name", "Participant Name"]),
-    type: valueAt(row, headers, ["Type"]),
-    songUrl: songUrl,
-    mediaType: mediaUrls.length === 1 ? getDriveFileMimeType(mediaUrls[0]) : "",
-    groupMembers: valueAt(row, headers, ["Group Members"]),
-    status: String(valueAt(row, headers, ["Program Status", "Status"]) || "Pending"),
-    position: position,
-    totalParticipants: rows.length,
-    isNext: position === 1,
-    nextProgram: rows[0] ? valueAt(rows[0].row, headers, ["Event"]) : ""
-  });
+    participants: participants,
+    totalPrograms: participants.length
+  }));
 }

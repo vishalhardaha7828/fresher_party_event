@@ -244,7 +244,7 @@
     </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzU0qPTTfRuvVnZHxhO8TQJq_aBNw5sVoAS4bM2yWjVy4637uoFYGJKeP0ogWkV5j7b/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxzk3BroT4zUdSoPctgmE9I-D0EiyBE5bEjCyz9gFbxHHE8uncBl_icnlH4gBu47fpy/exec";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const STORE_PREFIX = "em.";
 const SYNC_INTERVAL_MS = 5000;
@@ -833,8 +833,9 @@ async function checkParticipantStatus() {
         result.className = data.found
             ? "mt-4 rounded-xl bg-emerald-50 p-3 text-[13px] font-bold text-emerald-700 ring-1 ring-emerald-200"
             : "mt-4 rounded-xl bg-rose-50 p-3 text-[13px] font-bold text-rose-700 ring-1 ring-rose-200";
+        const participants = Array.isArray(data.participants) ? data.participants : (data.found ? [data] : []);
         result.innerHTML = data.found
-            ? participantStatusText(data)
+            ? `<div class="mb-3 text-left">${participants.length} registered program${participants.length === 1 ? "" : "s"} found for ${escapeHtml(phone)}.</div><div class="grid gap-3">${participants.map(participantStatusText).join("")}</div>`
             : "Status: Aapka form abhi tak nahi bhara gaya hai.";
     } catch (error) {
         console.error("Status check error:", error);

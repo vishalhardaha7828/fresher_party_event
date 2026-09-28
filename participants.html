@@ -197,7 +197,7 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbwIwXe9i3bF99ZUs-smCPrSjPtmqJakKiedr6cMCuQwSwTYKMat2yFWfuwKsH6dXvR4/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzU0qPTTfRuvVnZHxhO8TQJq_aBNw5sVoAS4bM2yWjVy4637uoFYGJKeP0ogWkV5j7b/exec";
 
 /* =========================================================================
    SESSION — sirf UI ke liye; asli permission Apps Script me check hoti hai.
@@ -240,7 +240,7 @@ async function apiPost(action, payload = {}) {
 
 async function fetchWithTimeout(url, options = {}) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 60000);
     try {
         return await fetch(url, { ...options, signal: controller.signal });
     } catch (error) {
@@ -335,10 +335,22 @@ function handleTypeChange() {
 }
 
 function handleEventChange() {
-    const isDance = $("pEvent").value === "Dance";
-    $("songGroup").classList.toggle("hidden", !isDance);
+    const eventName = $("pEvent").value;
+    const isDance = eventName === "Dance";
+    const isSinging = eventName === "Singing";
+    const supportsSong = isDance || isSinging;
+    $("songGroup").classList.toggle("hidden", !supportsSong);
     $("pSong").required = isDance;
-    if (!isDance) $("pSong").value = "";
+    $("pSong").accept = isSinging
+        ? "audio/mpeg,audio/mp3,.mp3"
+        : "audio/mpeg,audio/mp3,video/mp4,.mp3,.mp4";
+    $("pSong").previousElementSibling.textContent = isSinging
+        ? "Background Music (Optional MP3)"
+        : "Dance Song ya Video (MP3 ya MP4)";
+    $("pSong").nextElementSibling.textContent = isSinging
+        ? "Singing ke liye background music optional hai; MP3 gana chahein to upload karein."
+        : "Ek hi picker se MP3 gana ya MP4 video, inmein se ek select karein.";
+    if (!supportsSong) $("pSong").value = "";
 }
 
 /* =========================================================================
@@ -510,7 +522,8 @@ async function submitParticipant(event) {
         const isMp3 = media && /^audio\/(mpeg|mp3)$/i.test(media.type) && /\.mp3$/i.test(media.name);
         const isMp4 = media && /^video\/mp4$/i.test(media.type) && /\.mp4$/i.test(media.name);
         if (eventName === "Dance" && !media) throw new Error("Dance participant ke liye MP3 gana ya MP4 video mein se ek select karein.");
-        if (media && !isMp3 && !isMp4) throw new Error("Sirf MP3 gana ya MP4 video upload karein.");
+        if (eventName === "Singing" && media && !isMp3) throw new Error("Singing background ke liye sirf MP3 gana upload karein.");
+        if (eventName === "Dance" && media && !isMp3 && !isMp4) throw new Error("Sirf MP3 gana ya MP4 video upload karein.");
         await apiPost("addParticipant", {
             name: $("pName").value,
             branch: $("pBranch").value,

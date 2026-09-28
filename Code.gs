@@ -967,7 +967,8 @@ function addParticipant(data) {
   const eventName = text(data.event, 60);
   let songUrl = "";
   let videoUrl = "";
-  if (eventName.toLowerCase() === "dance") {
+  const eventType = eventName.toLowerCase();
+  if (eventType === "dance") {
     const hasSong = Boolean(data.songData);
     const hasVideo = Boolean(data.videoData);
     if (hasSong === hasVideo) return fail("Dance participant ke liye MP3 gana ya MP4 video mein se ek upload karein.");
@@ -980,6 +981,13 @@ function addParticipant(data) {
     } else {
       videoUrl = saveDriveFile(data.videoData, text(safeName + ".mp4", 200), "video/mp4", false, SONG_FOLDER_ID || MEDIA_FOLDER_ID, ALLOWED_PARTICIPANT_MEDIA_TYPES, null);
     }
+  } else if (eventType === "singing" && (data.songData || data.videoData)) {
+    const isMp3 = Boolean(data.songData) && !data.videoData
+        && /\.mp3$/i.test(String(data.songName))
+        && /^(audio\/mpeg|audio\/mp3)$/i.test(String(data.songMimeType || ""));
+    if (!isMp3) return fail("Singing background ke liye sirf valid MP3 gana upload karein.");
+    const safeName = name.replace(/[\\/:*?"<>|]/g, "_");
+    songUrl = saveDriveFile(data.songData, text(safeName + ".mp3", 200), "audio/mpeg", false, SONG_FOLDER_ID || MEDIA_FOLDER_ID, ALLOWED_PARTICIPANT_MEDIA_TYPES, null);
   }
   const participantValues = Array(current.getLastColumn()).fill("");
   const setParticipantValue = (names, value) => {
@@ -1001,7 +1009,7 @@ function addParticipant(data) {
   current.getRange(current.getLastRow() + 1, 1, 1, participantValues.length).setValues([participantValues]);
   const savedRow = current.getRange(current.getLastRow(), 1, 1, current.getLastColumn()).getValues()[0];
   const savedSongUrl = valueAt(savedRow, headers, ["Song URL", "Dance Song", "Song"]);
-  if (eventName.toLowerCase() === "dance" && String(savedSongUrl) !== mediaUrl) {
+  if ((eventType === "dance" || (eventType === "singing" && mediaUrl)) && String(savedSongUrl) !== mediaUrl) {
     throw new Error("Participant save ho gaya, lekin Song URL column me save nahi hua.");
   }
   return ok({ songUrl: songUrl, videoUrl: videoUrl });

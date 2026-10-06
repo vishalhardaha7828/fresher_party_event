@@ -158,10 +158,10 @@
                     <input type="tel" id="eWorkerPhone" class="input" maxlength="10" pattern="[0-9]{10}" required placeholder="10 digit mobile number">
                 </div>
                 <div>
-                    <label class="field-label" for="eBillPhoto">Bill Photo (Optional)</label>
-                    <input type="file" id="eBillPhoto" class="input" accept="image/*">
+                    <label class="field-label" for="eBillPhoto">Bill / Invoice (Optional)</label>
+                    <input type="file" id="eBillPhoto" class="input" accept="image/*,application/pdf,.pdf">
                 </div>
-                <p class="muted rounded-lg bg-amber-50 p-2.5 ring-1 ring-amber-200 md:col-span-2">⚠️ Maximum 5 MB. Bill link se kisi ko bhi dikh sakta hai, isliye personal documents upload na karein.</p>
+                <p class="muted rounded-lg bg-amber-50 p-2.5 ring-1 ring-amber-200 md:col-span-2">⚠️ Sirf image ya PDF upload karein. Bill link se kisi ko bhi dikh sakta hai, isliye personal documents upload na karein.</p>
                 <div class="flex flex-col gap-2 sm:flex-row md:col-span-2">
                     <button type="submit" id="saveExpBtn" class="btn">Save Expense</button>
                     <button type="button" id="cancelExpenseEdit" class="btn btn-muted hidden sm:w-40">Cancel Edit</button>
@@ -201,16 +201,14 @@
 /* =========================================================================
    CONFIG — Apps Script re-deploy karne ke baad sirf ye ek line badalni hai.
    ========================================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbxzk3BroT4zUdSoPctgmE9I-D0EiyBE5bEjCyz9gFbxHHE8uncBl_icnlH4gBu47fpy/exec";
-
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const API_URL = "https://script.google.com/macros/s/AKfycbyHw9V9DzSQJVGhzL_1QuAtxzzoIzvIMoEwNY8IrDdikqprCW3aB4tuTYUHtPnxBwxi/exec";
 
 /* =========================================================================
    SESSION — sirf UI ke liye; asli permission Apps Script me check hoti hai.
    ========================================================================= */
 const STORE_PREFIX = "em.";
 const CACHE_KEY = STORE_PREFIX + "data";
-const SYNC_INTERVAL_MS = 5000;
+const SYNC_INTERVAL_MS = 30000;
 let syncTimer = null;
 let syncInFlight = false;
 
@@ -470,17 +468,16 @@ async function submitExpense(event) {
         return;
     }
 
-    const photo = $("eBillPhoto").files[0];
-    if (photo && photo.size > MAX_UPLOAD_BYTES) {
-        showToast("Bill photo 5 MB se chhoti honi chahiye.", "error");
+    const billFile = $("eBillPhoto").files[0];
+    if (billFile && !billFile.type.startsWith("image/") && billFile.type !== "application/pdf") {
+        showToast("Bill ke liye sirf image ya PDF upload karein.", "error");
         return;
     }
-
     const button = $("saveExpBtn");
     button.disabled = true;
     button.innerHTML = '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span> Saving...';
     try {
-        const file = await readBillPhoto(photo);
+        const file = await readBillFile(billFile);
         await apiPost(editingExpenseIndex === null ? "addExpense" : "updateExpense", {
             item: $("eItem").value,
             amount: $("eAmount").value,
@@ -505,7 +502,7 @@ async function submitExpense(event) {
     }
 }
 
-function readBillPhoto(file) {
+function readBillFile(file) {
     if (!file) return Promise.resolve({ base64Data: "", mimeType: "", fileName: "" });
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -517,7 +514,7 @@ function readBillPhoto(file) {
                 fileName: file.name
             });
         };
-        reader.onerror = () => reject(new Error("Bill photo read nahi ho saki."));
+        reader.onerror = () => reject(new Error("Bill file read nahi ho saki."));
         reader.readAsDataURL(file);
     });
 }

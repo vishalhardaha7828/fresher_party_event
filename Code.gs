@@ -724,10 +724,15 @@ function normalizeParticipantOrder(current) {
     .map((row, index) => ({
       sheetRow: index + 2,
       order: Number(row[orderIndex]) || index + 1,
+      currentOrder: row[orderIndex],
       status: statusIndex >= 0 ? String(row[statusIndex] || "Pending") : "Pending"
     }))
     .sort((left, right) => (left.status === "Completed") - (right.status === "Completed") || left.order - right.order);
-  rows.forEach((item, index) => current.getRange(item.sheetRow, orderIndex + 1).setValue(index + 1));
+  const nextOrderByRow = new Map(rows.map((item, index) => [item.sheetRow, index + 1]));
+  const orderValues = Array.from({ length: rows.length }, (_, index) => [nextOrderByRow.get(index + 2)]);
+  if (rows.some(item => Number(item.currentOrder) !== nextOrderByRow.get(item.sheetRow))) {
+    current.getRange(2, orderIndex + 1, orderValues.length, 1).setValues(orderValues);
+  }
 }
 
 function getMedia() {
@@ -770,7 +775,9 @@ function ensureTaskSheet() {
     current.getRange(1, 5).setValue("Responsible Person");
   }
   if (current.getLastColumn() < 6) current.insertColumnAfter(5);
-  current.getRange(1, 6).setValue("Timestamp");
+  if (String(headersOf(current)[5] || "").trim() !== "Timestamp") {
+    current.getRange(1, 6).setValue("Timestamp");
+  }
   while (current.getLastColumn() > 6) {
     const latestHeaders = headersOf(current);
     const lastHeader = String(latestHeaders[latestHeaders.length - 1] || "").toLowerCase().replace(/\s/g, "");
@@ -924,7 +931,11 @@ function saveExpense(data, updating) {
 
   let fileUrl = text(data.fileUrl, 500);
   if (data.fileData && data.fileName) {
-    fileUrl = saveDriveFile(data.fileData, data.fileName, data.fileMimeType, false, BILL_FOLDER_ID);
+    const billMimeType = String(data.fileMimeType || "");
+    if (!/^(image\/[^;]+|application\/pdf)$/i.test(billMimeType)) {
+      return fail("Bill ke liye sirf image ya PDF upload karein.");
+    }
+    fileUrl = saveDriveFile(data.fileData, data.fileName, billMimeType, false, BILL_FOLDER_ID, /^(image\/|application\/pdf$)/i, null);
   } else if (updating && !fileUrl) {
     fileUrl = existingCellValue("Expenses", data.rowIndex, 6);
   }
